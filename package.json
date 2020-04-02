@@ -1,0 +1,19 @@
+{
+  "name": "mac",
+  "description": "",
+  "version": "1.0.0",
+  "homepage": "https://github.com/dominictarr/mac",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dominictarr/mac.git"
+  },
+  "dependencies": {
+    "tape": "^4.13.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "tape test/*.js"
+  },
+  "author": "Dominic Tarr @EMovhfIrFk4NihAKnRNhrfRaqIhBv1Wj8pTxJNgvCCY=.ed25519",
+  "license": "MIT"
+}

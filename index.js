@@ -29,7 +29,8 @@ function fun (_args, env) {
   var args = _args.shift()
   var body = _args
   console.log('fun', {args: args, body:body})
-  return function (argv, env) {
+  //function takes the env from the definition time, not the call time
+  return function (argv) {
     var _env = {}
     _env.__proto__ = env
     args.forEach((k, i) => _env[k.description] = argv[i])

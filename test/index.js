@@ -40,7 +40,7 @@ var tape = require('tape')
 var inputs = [
   '(module (def suc (fun (n) (add n 1))) (suc 37))',
   `{module [def fib
-      {fun (n)
+      {fun fib (n)
         (0) 1
         (1) 1
           (add (fib (add n -1)) (fib (add n -2)))
@@ -52,13 +52,37 @@ var inputs = [
         (()) ()
           (cat (reverse (tail l)) (head l))))
       (reverse (1 2 3))
+  )`,
+  `(module
+    (def create (fun (x) (fun () x)))
+    (def seven (create 7))
+    (seven)
   )`
+/*
+  type is (size) (read pointer) (write pointer value)
+  (def struct (props) {
+    (block
+      (def offset 0)
+      (cat (map props (fun ([name type])
+        (block
+          (set offset (add offset type.size))
+          { name : [
+              ,read : (ptr) -> (type.read (add ptr offset))
+              ,write : (ptr value) -> (type.write (add ptr offset) value)
+              ,size: type.size
+          ]  }
+        )) [,size : offset])
+    )
+  })
+  (def point {struct [x:f64 y:f64]})
+*/
 ]
 
 var outputs = [
   '(module 38)',
   '(module 8)',
-  '(module (3 2 1))'
+  '(module (3 2 1))',
+  '(module 7)'
 ]
 
 inputs.forEach(function (v, i) {

@@ -41,5 +41,8 @@ value(OR(pair, chain, quote, easy_value))
 var root = AND(_, value, _)
 
 module.exports = function (src) {
-  return root(src, 0).groups[0]
+  var out = root(src, 0)
+  if(out.length != src.length)
+    throw new Error('failed to parse fully:'+src)
+  return out.groups[0]
 }

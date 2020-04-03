@@ -46,6 +46,15 @@ function outer (free) {
 the outer function sets a free variable in the inner function. this is easy to implement.
 when evaluating the inner function just replace any free variables.
 
+### function calls to bound variables can be collapsed
+
+if a function calls literals `(add 1 2)` we can collapse that in place.
+so after we've bound the free variables, we can check if there are any function calls
+that can be bound also.
+
+Of course, this only works with pure functions. But I'm planning to have code to test if
+functions are pure...
+
 ### create a scope struct with free variables on it
 
 ``` js

@@ -56,11 +56,3 @@ tape('free variables', function (t) {
 
   t.end()
 })
-
-//okay what about something where a loop gets unrolled
-//struct needs to pass in map of names and types
-//and get a bunch of methods that will read offsets from an object.
-
-//lets say we have a function that takes a list and maps it.
-//we want to just unroll the bound list. for example the stack-expression
-//style dsl should be fully static.

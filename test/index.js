@@ -1,8 +1,12 @@
 var expand = require('../')
 var parse = require('../parse')
-
+var inspect = require('util').inspect
+var stringify = require('../util').stringify
 function isNumber(n) {
   return 'number' === typeof n
+}
+function isFunction (f) {
+  return 'function' === typeof f
 }
 
 var env = {
@@ -28,12 +32,13 @@ function isSymbol (s) {
 
 var isArray = Array.isArray
 
-function stringify (s) {
-  if(isArray(s)) return '(' + s.map(stringify).join(' ') + ')'
-  if(isSymbol(s)) return s.description
-  return JSON.stringify(s)
+function travducer (reduce) {
+  return function R(acc, ast) {
+    return isArray(ast) ? ast.reduce(R, acc) : reduce(acc, ast)
+  }
 }
 
+var uniqueFns = travducer((acc, ast) => { if(isFunction(ast)) acc.add(ast); return acc })
 
 var tape = require('tape')
 
@@ -43,7 +48,7 @@ var inputs = [
       {fun fib (n)
         (0) 1
         (1) 1
-          (add (fib (add n -1)) (fib (add n -2)))
+          [add {fib (add n -1)} {fib (add n -2)}]
       }]
       (fib 5)
   }`,
@@ -56,10 +61,10 @@ var inputs = [
   `(module
     (def create (fun (x) (fun () x)))
     (def seven (create 7))
-    (seven)
+    seven
   )`
 /*
-  type is (size) (read pointer) (write pointer value)
+  // type is (size) (read pointer) (write pointer value)
   (def struct (props) {
     (block
       (def offset 0)
@@ -67,9 +72,9 @@ var inputs = [
         (block
           (set offset (add offset type.size))
           { name : [
-              ,read : (ptr) -> (type.read (add ptr offset))
-              ,write : (ptr value) -> (type.write (add ptr offset) value)
-              ,size: type.size
+              read  : (ptr) -> (type.read (add ptr offset))
+              write : (ptr value) -> (type.write (add ptr offset) value)
+              size  : type.size
           ]  }
         )) [,size : offset])
     )
@@ -78,16 +83,27 @@ var inputs = [
 */
 ]
 
+/*
+ideas:
+  inline a function so that it doesn't need a call, and can have closure scoped variables..
+    (won't work for recursive closures)
+  outline a closure by turning free variables into arguments.
+*/
+
 var outputs = [
-  '(module 38)',
-  '(module 8)',
-  '(module (3 2 1))',
-  '(module 7)'
+  '38',
+  '8',
+  '(3 2 1)',
+  '(fun () 7)'
 ]
 
 inputs.forEach(function (v, i) {
   tape('expand:'+stringify(v), function (t) {
-    t.equal(stringify(expand(parse(v), {__proto__: env})), stringify(parse(outputs[i])))
+    var out = expand(parse(v), {__proto__: env})
+    console.log("OUT", inspect(out, {depth: 10}))
+    var funs = uniqueFns(new Set(), out).values()
+    console.log(funs)
+    t.equal(stringify(out.pop()), stringify(parse(outputs[i])))
     t.end()
   })
 })

@@ -30,7 +30,10 @@ function equals (a, b) {
 
 //when defining a function, insert any scoped variables.
 function bind(ast, env) {
-  if(isSymbol(ast) && env[ast.description]) return env[ast.description]
+  if(isSymbol(ast) && env[ast.description]) {
+    console.log("BIND REF", ast, env[ast.description])
+    return [Symbol('ref'), env[ast.description], ast]
+  }
   if(!isArray(ast)) return ast
   else if(isEmpty(ast)) return []
   else return ast.map(a => bind(a, env))
@@ -51,7 +54,9 @@ function fun (_args, env) {
     }
     return expand(body[i], _env)
   }
-  body = bind(body, name ? {__proto__: env, [name]: fn} : env)
+  body = bind(body, name ? {__proto__: env, [name.description]: fn} : env)
+  fn.source = [Symbol('fun')].concat(name ? [name.description] : []).concat([args]).concat(body)
+
   return fn
 }
 
@@ -62,6 +67,10 @@ function get (args, env) {
   return object
 }
 
+function ref (args) {
+  return args[1]
+}
+
 function expand (ast, env) {
   if(isEmpty(ast)) return ast
   if(isSymbol(ast)) {
@@ -70,14 +79,18 @@ function expand (ast, env) {
   }
   else if(!isArray(ast))
     return ast
-    //console.log('expand ary', ast)
   if(isFunction(ast[0]))
     return ast[0](ast.slice(1).map(e => expand(e, env)), env)
+  if(isArray(ast[0])) {
+    var fn = expand(ast[0], env)
+    return fn(ast.slice(1).map(e => expand(e, env)), env)
+  }
+  if(isSymbol(ast[0]) && 'ref' === ast[0].description)
+    return ast[1]
   if(isSymbol(ast[0]) && 'fun' === ast[0].description)
     return fun([ast[1]].concat(ast.slice(2)), env)
   else if(isDef(ast[0])) {
-    env[ast[1].description] = expand(ast[2], env)
-      //expand(createFunction(ast[1][0], ast[1].slice(1), ast.slice(2))
+    return [Symbol('def'), ast[1], env[ast[1].description] = expand(ast[2], env)]
   }
   else if(env[ast[0].description]) {
     return env[ast[0].description](ast.slice(1).map(e => expand(e, env)), env)

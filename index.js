@@ -30,8 +30,8 @@ function equals (a, b) {
 
 //when defining a function, insert any scoped variables.
 function bind(ast, env) {
+  if(isArray(ast) && isSymbol(ast[0]) && ast[0].description == 'ref') return ast
   if(isSymbol(ast) && env[ast.description]) {
-    console.log("BIND REF", ast, env[ast.description])
     return [Symbol('ref'), env[ast.description], ast]
   }
   if(!isArray(ast)) return ast
@@ -55,7 +55,7 @@ function fun (_args, env) {
     return expand(body[i], _env)
   }
   body = bind(body, name ? {__proto__: env, [name.description]: fn} : env)
-  fn.source = [Symbol('fun')].concat(name ? [name.description] : []).concat([args]).concat(body)
+  fn.source = [Symbol('fun')].concat(name ? [name] : []).concat([args]).concat(body)
 
   return fn
 }
@@ -79,15 +79,15 @@ function expand (ast, env) {
   }
   else if(!isArray(ast))
     return ast
-  if(isFunction(ast[0]))
+  else if(isFunction(ast[0]))
     return ast[0](ast.slice(1).map(e => expand(e, env)), env)
-  if(isArray(ast[0])) {
+  else if(isArray(ast[0])) {
     var fn = expand(ast[0], env)
     return fn(ast.slice(1).map(e => expand(e, env)), env)
   }
-  if(isSymbol(ast[0]) && 'ref' === ast[0].description)
+  else if(isSymbol(ast[0]) && 'ref' === ast[0].description)
     return ast[1]
-  if(isSymbol(ast[0]) && 'fun' === ast[0].description)
+  else if(isSymbol(ast[0]) && 'fun' === ast[0].description)
     return fun([ast[1]].concat(ast.slice(2)), env)
   else if(isDef(ast[0])) {
     return [Symbol('def'), ast[1], env[ast[1].description] = expand(ast[2], env)]

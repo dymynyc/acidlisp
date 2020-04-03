@@ -127,10 +127,6 @@ exports.unroll = function unroll (tree, funs) {
       return Symbol('$f'+id)
     }
   })
-  console.log('funs', funs)
-  console.log('tree', tree)
-
-  console.log("REMAP", tree.source, remap(tree, funs))
 
   return [Symbol('module')]
     .concat(funs.map((fn, i) => [Symbol('def'), Symbol('$f'+i), remap(fn.source, funs)] ))

@@ -28,6 +28,17 @@ function equals (a, b) {
   return a === b
 }
 
+function isNumber(n) {
+  return 'number' === typeof n
+}
+function isBound(b) {
+  return isNumber(b) || (isArray(b) && isSymbol(b[0]) && b[0].description == 'ref') || isFunction(b)
+}
+
+function eqSymbol(sym, str) {
+  return isSymbol(sym) && str === sym.description
+}
+
 //when defining a function, insert any scoped variables.
 function bind(ast, env) {
   if(isArray(ast) && isSymbol(ast[0]) && ast[0].description == 'ref') return ast
@@ -36,7 +47,21 @@ function bind(ast, env) {
   }
   if(!isArray(ast)) return ast
   else if(isEmpty(ast)) return []
-  else return ast.map(a => bind(a, env))
+  else {
+    //if we know everything to call this value, just return it now
+    ast = ast.map(a => bind(a, env))
+
+      console.log('bound', ast.every(isBound), ast)
+      if(ast.every(isBound) && isFunction(ast[0][1])) {
+        console.log('>>>>>', ast)
+        return expand(ast, env)
+      }
+    return ast
+    if(!eqSymbol(ast[0], 'ref') && ast.every(isBound)) {
+      return expand(ast, env)
+    }
+    return ast
+  }
 }
 
 function fun (_args, env) {

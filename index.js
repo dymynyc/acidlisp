@@ -1,43 +1,9 @@
+var {
+  isDefined, isSymbol, isArray,
+  isDef, isEmpty, isFunction, isNumber, isBound,
+  eqSymbol, equals
+} = require('./util')
 
-function isDefined(d) {
-  return 'undefined' !== typeof d
-}
-
-function isSymbol(s) {
-  return 'symbol' === typeof s
-}
-
-var isArray = Array.isArray
-
-function isDef(s) {
-  return isSymbol(s) && 'def' === s.description
-}
-
-function isEmpty (e) {
-  return isArray(e) && e.length === 0
-}
-
-function isFunction (f) {
-  return 'function' === typeof f
-}
-
-//(def (name args...) (body))
-function equals (a, b) {
-  if(isArray(a) && isArray(b))
-    return (a.length === b.length) && a.every((v, i) => equals(v, b[i]))
-  return a === b
-}
-
-function isNumber(n) {
-  return 'number' === typeof n
-}
-function isBound(b) {
-  return isNumber(b) || (isArray(b) && isSymbol(b[0]) && b[0].description == 'ref') || isFunction(b)
-}
-
-function eqSymbol(sym, str) {
-  return isSymbol(sym) && str === sym.description
-}
 
 //when defining a function, insert any scoped variables.
 function bind(ast, env) {
@@ -50,17 +16,14 @@ function bind(ast, env) {
   else {
     //if we know everything to call this value, just return it now
     ast = ast.map(a => bind(a, env))
-
-      console.log('bound', ast.every(isBound), ast)
-      if(ast.every(isBound) && isFunction(ast[0][1])) {
-        console.log('>>>>>', ast)
-        return expand(ast, env)
-      }
-    return ast
-    if(!eqSymbol(ast[0], 'ref') && ast.every(isBound)) {
+    if(ast.every(isBound) && isFunction(ast[0][1])) {
       return expand(ast, env)
     }
     return ast
+//    if(!eqSymbol(ast[0], 'ref') && ast.every(isBound)) {
+//      return expand(ast, env)
+//    }
+//    return ast
   }
 }
 

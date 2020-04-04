@@ -1,14 +1,55 @@
 var isArray = Array.isArray
-function isFunction (f) {
-  return 'function' === typeof f
+
+function isDefined(d) {
+  return 'undefined' !== typeof d
 }
+
 function isSymbol(s) {
   return 'symbol' === typeof s
 }
 
-function eqSymbol (sym, str) {
-   return isSymbol(sym) && str === sym.description
+var isArray = Array.isArray
+
+function isDef(s) {
+  return isSymbol(s) && 'def' === s.description
 }
+
+function isEmpty (e) {
+  return isArray(e) && e.length === 0
+}
+
+function isFunction (f) {
+  return 'function' === typeof f
+}
+
+function isNumber(n) {
+  return 'number' === typeof n
+}
+function isBound(b) {
+  return isNumber(b) || (isArray(b) && isSymbol(b[0]) && b[0].description == 'ref') || isFunction(b)
+}
+
+function eqSymbol(sym, str) {
+  return isSymbol(sym) && str === sym.description
+}
+
+//(def (name args...) (body))
+function equals (a, b) {
+  if(isArray(a) && isArray(b))
+    return (a.length === b.length) && a.every((v, i) => equals(v, b[i]))
+  return a === b
+}
+
+exports.isDefined  = isDefined
+exports.isSymbol   = isSymbol
+exports.isArray    = isArray
+exports.isDef      = isDef
+exports.isEmpty    = isEmpty
+exports.isFunction = isFunction
+exports.isNumber   = isNumber
+exports.isBound    = isBound
+exports.eqSymbol   = eqSymbol
+exports.equals     = equals
 
 function traverse (tree, each_branch, each_leaf) {
   if(isFunction(tree) && tree.source)

@@ -1,11 +1,11 @@
 {
-  "name": "mac",
+  "name": "l6",
   "description": "",
   "version": "1.0.0",
-  "homepage": "https://github.com/dominictarr/mac",
+  "homepage": "https://github.com/dominictarr/l6",
   "repository": {
     "type": "git",
-    "url": "git://github.com/dominictarr/mac.git"
+    "url": "git://github.com/dominictarr/l6.git"
   },
   "dependencies": {
     "tape": "^4.13.2"

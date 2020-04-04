@@ -3,6 +3,12 @@ var expand  = require('../')
 var tape    = require('tape')
 var u       = require('../util')
 var inspect = require('util').inspect
+var compile = require('../compile/js')
+var {
+  isDefined, isSymbol, isArray,
+  isDef, isEmpty, isFunction, isNumber, isBound,
+  eqSymbol, equals
+} = require('../util')
 
 function sym2string (sym) {
   return sym.description
@@ -41,9 +47,8 @@ tape('free variables', function (t) {
 
   t.deepEqual(u.stringify(u.unroll(seven)), '(module (export (fun () 7)))')
 
-  // this example currently ends up as (fun () (suc 6))
-  // but clearly (suc 6) can be flattened because it's pure
-  // and all it's args are bound
+  // this example gets flattened to 7, because we can eval (suc x) and (add x 1)
+  // without more data. This wouldn't work if suc wasn't pure.
 
   var src = `
   (module
@@ -55,6 +60,14 @@ tape('free variables', function (t) {
   var ast = parse(src)
   var seven2 = expand(ast, env)[4]
   t.deepEqual(u.stringify(u.unroll(seven2)), '(module (export (fun () 7)))')
-
+  console.log(u.unroll(seven2))
+  console.log("COMPILE.js", compile(u.unroll(seven2)))
   t.end()
+
+  var points = `
+  (module
+    (def point (struct {x: f64 y: f64}))
+    (def length {fun [(p point)] (sqrt (add (mul p.x p.x) (mul p.y p.y)))})
+  )
+  `
 })

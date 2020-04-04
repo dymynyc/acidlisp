@@ -1,7 +1,13 @@
 var expand = require('../')
 var parse = require('../parse')
 var inspect = require('util').inspect
-var stringify = require('../util').stringify
+
+var {
+  isDefined, isSymbol, isArray,
+  isDef, isEmpty, isFunction, isNumber, isBound,
+  eqSymbol, equals, stringify
+} = require('../util')
+
 function isNumber(n) {
   return 'number' === typeof n
 }

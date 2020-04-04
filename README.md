@@ -1,4 +1,4 @@
-# mac
+# l6
 
 playing around with the idea of a macro based language.
 I want it to feel like closures,
@@ -99,9 +99,21 @@ if('string' === typeof "hello world")
 ```
 this won't work for recursion though, unless there is a way to convert recursion to iteration.
 
+### structs as arguments
+
+``` js
+{fun inc_prop ((foo type)) [
+  (set foo.prop (add (get foo.prop) 1))
+  foo
+]}
 
 ```
 
+`(foo type)` expands to a pointer when compiled.
+`(get foo.prop)` expands to `(read_type (add foo_ptr prop_offset))`
+`(set foo.prop)` expands to `(write_type (add foo_ptr prop_offset) (read_type (add foo_ptr prop_offset)))`
+`foo` expands to `foo_ptr`
+```
 
 ## License
 

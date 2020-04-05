@@ -1,3 +1,7 @@
+
+//TODO implement enough primitives to do something maybe useful
+//eq get_local i32.cont add/sub if call
+
 var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound,

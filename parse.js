@@ -34,7 +34,7 @@ var easy_value = OR(list, string, number, nil, boolean, sym)
 var pair = PAIR(':')
 var chain = JOIN_MUST('.', 'get')
 
-var quote = PREFIX("&", 'quote') //GROUP(AND("&", value), e => [Symbol('quote'), e[0]])
+var quote = PREFIX("&", 'quote')
 
 value(OR(pair, chain, quote, easy_value))
 

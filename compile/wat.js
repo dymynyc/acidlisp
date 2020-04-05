@@ -46,6 +46,7 @@ function compile (ast) {
   }
 
   if(isArray(ast)) {
+    //map strings back to
     var fn_name = ast[0].description
     var fn = exports[fn_name]
     if(fn)

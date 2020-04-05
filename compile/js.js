@@ -7,7 +7,15 @@ var {
 
 function compile (ast) {
   if(isSymbol(ast)) return ast.description
+
+  //remove refs
+  if(isArray(ast) && eqSymbol(ast[0], 'ref')) {
+    if(isFunction(ast[1])) ast = ast[2]
+    else ast = ast[1]
+  }
+
   if(isFunction(ast)) return compile(ast.source)
+
   if(isArray(ast)) {
     var fn = exports[ast[0].description]
     if(!fn) throw new Error('could not resolve compiler for:'+stringify(ast))

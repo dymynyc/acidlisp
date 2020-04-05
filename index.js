@@ -8,7 +8,7 @@ var {
 //when defining a function, insert any scoped variables.
 function bind(ast, env) {
   if(isArray(ast) && isSymbol(ast[0]) && ast[0].description == 'ref') return ast
-  if(isSymbol(ast) && env[ast.description]) {
+  if(isSymbol(ast) && isDefined(env[ast.description])) {
     return [Symbol('ref'), env[ast.description], ast]
   }
   if(!isArray(ast)) return ast
@@ -16,14 +16,10 @@ function bind(ast, env) {
   else {
     //if we know everything to call this value, just return it now
     ast = ast.map(a => bind(a, env))
-    if(ast.every(isBound) && isFunction(ast[0][1])) {
+    if(ast.every(isBound))
       return expand(ast, env)
-    }
+
     return ast
-//    if(!eqSymbol(ast[0], 'ref') && ast.every(isBound)) {
-//      return expand(ast, env)
-//    }
-//    return ast
   }
 }
 
@@ -71,6 +67,7 @@ function expand (ast, env) {
     return ast[0](ast.slice(1).map(e => expand(e, env)), env)
   else if(isArray(ast[0])) {
     var fn = expand(ast[0], env)
+    if(!isFunction(fn)) return fn
     return fn(ast.slice(1).map(e => expand(e, env)), env)
   }
   else if(isSymbol(ast[0]) && 'ref' === ast[0].description)

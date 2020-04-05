@@ -135,11 +135,12 @@ exports.isHigherOrder = function (fun) {
 // ordered set of definitions, with lexical references.
 
 function remap (tree, funs) {
+  console.log('remap', tree)
   if(isFunction(tree)) tree = tree.source
   return tree.map(branch => {
     if(!isArray(branch)) return branch
     if(eqSymbol(branch[0], 'ref') && isFunction(branch[1]) && isSymbol(branch[2])) {
-      return Symbol('$f'+funs.indexOf(branch[1]))
+      return Symbol('f'+funs.indexOf(branch[1]))
     }
     else
       return remap(branch, funs)
@@ -165,7 +166,7 @@ exports.unroll = function unroll (tree, funs) {
         id = funs.push(branch[1])
         unroll(branch[1].source, funs)
       }
-      return Symbol('$f'+id)
+      return Symbol('f'+id)
     }
   })
 

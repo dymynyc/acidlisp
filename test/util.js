@@ -3,7 +3,9 @@ var expand  = require('../')
 var tape    = require('tape')
 var u       = require('../util')
 var inspect = require('util').inspect
-var compile = require('../compile/js')
+var compileJs = require('../compile/js')
+var compileWat = require('../compile/wat')
+var wat2wasm = require('../wat2wasm')
 var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound,
@@ -46,10 +48,13 @@ tape('free variables', function (t) {
   `), {})[3]
 
   t.deepEqual(u.stringify(u.unroll(seven)), '(module (export (fun () 7)))')
+  console.log("COMPILE.js", compileJs(u.unroll(seven)))
+  console.log("COMPILE.wat", compileWat(u.unroll(seven)))
 
   // this example gets flattened to 7, because we can eval (suc x) and (add x 1)
   // without more data. This wouldn't work if suc wasn't pure.
 
+  //uses binding, flattening
   var src = `
   (module
     (def suc {fun (x) [add x 1]})
@@ -60,8 +65,25 @@ tape('free variables', function (t) {
   var ast = parse(src)
   var seven2 = expand(ast, env)[4]
   t.deepEqual(u.stringify(u.unroll(seven2)), '(module (export (fun () 7)))')
-  console.log(u.unroll(seven2))
-  console.log("COMPILE.js", compile(u.unroll(seven2)))
+  var fun7 = wat2wasm(compileWat(u.unroll(seven2)))
+  t.deepEqual(fun7(), 7)
+
+  console.log("-------------")
+
+  var src2 = expand(parse(`
+    (module
+      (def suc {fun (x) [add x 1]})
+      {fun (x) [suc [suc x]]}
+    )
+  `), {})
+  
+  var unrolled = u.unroll(src2.pop())
+  console.log('SRC', unrolled)
+//  t.deepEqual(u.stringify(unrolled), '(module (def suf (fun (x) (add x 1))) (export (fun () (suc (suc x)))))')
+  console.log("CMP", compileWat(unrolled))
+  var funD = wat2wasm(compileWat(unrolled))
+  t.deepEqual(funD(3), 5)
+
   t.end()
 
   var points = `

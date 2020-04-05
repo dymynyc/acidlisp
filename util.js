@@ -26,7 +26,12 @@ function isNumber(n) {
   return 'number' === typeof n
 }
 function isBound(b) {
-  return isNumber(b) || (isArray(b) && isSymbol(b[0]) && b[0].description == 'ref') || isFunction(b)
+  return (
+    isNumber(b)
+  || (isArray(b) && isSymbol(b[0]) && b[0].description == 'ref')
+  || isFunction(b)
+  || (isArray(b) && b.every(isBound))
+  )
 }
 
 function eqSymbol(sym, str) {
@@ -135,7 +140,6 @@ exports.isHigherOrder = function (fun) {
 // ordered set of definitions, with lexical references.
 
 function remap (tree, funs) {
-  console.log('remap', tree)
   if(isFunction(tree)) tree = tree.source
   return tree.map(branch => {
     if(!isArray(branch)) return branch

@@ -25,12 +25,28 @@ function isFunction (f) {
 function isNumber(n) {
   return 'number' === typeof n
 }
+
+function isNull (n) {
+  return null === typeof n
+}
+
+function isBoolean(b) {
+  return 'boolean' === typeof b
+}
+
+function isString(s) {
+  return 'string' === typeof s
+}
+
+function isBasic(b) {
+  return isNumber(b) || isNull(b) || isBoolean(b) || isString(b)
+}
 function isBound(b) {
   return (
-    isNumber(b)
-  || (isArray(b) && isSymbol(b[0]) && b[0].description == 'ref')
+     isArray(b) && isSymbol(b[0]) && b[0].description == 'ref'
   || isFunction(b)
   || (isArray(b) && b.every(isBound))
+  || isBasic(b)
   )
 }
 
@@ -50,8 +66,12 @@ exports.isSymbol   = isSymbol
 exports.isArray    = isArray
 exports.isDef      = isDef
 exports.isEmpty    = isEmpty
+exports.isNull     = isNull
+exports.isBoolean  = isBoolean
+exports.isString   = isString
 exports.isFunction = isFunction
 exports.isNumber   = isNumber
+exports.isBasic    = isBasic
 exports.isBound    = isBound
 exports.eqSymbol   = eqSymbol
 exports.equals     = equals
@@ -160,7 +180,12 @@ exports.stringify = function stringify (s, env) {
   return JSON.stringify(s)
 }
 
-exports.unroll = function unroll (tree, funs) {
+exports.getExports = function (tree) {
+  return tree.filter(e => isArray(e) && eqSymbol(e[0], 'export'))
+    .map(e => isDefined(e[2]) ? [e[1], e[2]] : [null, e[1]])
+}
+
+function searchFunctions(tree, funs) {
   funs = funs || []
   traverse(tree, function (branch) {
     //find all bound functions referenced by a variable name.
@@ -168,13 +193,38 @@ exports.unroll = function unroll (tree, funs) {
       var id = funs.indexOf(branch[1])
       if(!~id) {
         id = funs.push(branch[1])
-        unroll(branch[1].source, funs)
+        searchFunctions(branch[1].source, funs)
       }
       return Symbol('f'+id)
     }
   })
+  return funs
+}
 
+exports.unrollExports = function (tree) {
+  console.log("EXPORTS", exports.getExports(tree))
+  
+}
+exports.unroll = function unroll (tree) {
+  var funs = searchFunctions(tree, [])
   return [Symbol('module')]
     .concat(funs.map((fn, i) => [Symbol('def'), Symbol('$f'+i), remap(fn.source, funs)] ))
     .concat([[Symbol('export'), remap(tree, funs)]])
+}
+
+exports.inline = function (tree) {
+  console.log(tree)
+  var fn = tree[0]
+  var args = tree.slice(1)
+  var fn_args = isSymbol(fn[1]) ? fn[2] : fn[1]
+  var body    = isSymbol(fn[1]) ? fn[3] : fn[2]
+  var obj = {}
+  fn_args.forEach(function (k, i) {
+    obj[k.description] = args[i]
+  })
+  return (function map (body) {
+    if(isSymbol(body) && isDefined(obj[body.description])) return obj[body.description]
+    else if(isArray(body)) return body.map(map)
+    else return body //numbers, etc
+  })(body)
 }

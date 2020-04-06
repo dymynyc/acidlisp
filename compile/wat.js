@@ -169,7 +169,9 @@ exports.and = function and (args, funs) {
     return '(i32.and '+compile(args[0], funs) + ' ' + compile(args[1], funs)+')'
   return and([args[0], and(args.slice(1), funs)], funs)
 }
-
+exports.lt = function (args, funs) {
+  return '(i32.lt_s '+compile(args[0], funs) + ' ' + compile(args[1], funs)+')'
+}
 exports.block = function (args, funs) {
   return args.map(e => compile(e, funs)).join('\n')
 }

@@ -90,6 +90,27 @@ var isString = (s => 'string' === typeof s)
 
 
 if(isString("hello world"))
+
+//by the time inner is returned, ary isn't bound, but fn is
+//so can inline
+function outer (fn) {
+  return function inner (ary) {
+    map(ary, fn)
+  }}
+
+//array isn't bound, so can't bind map call
+//iter has a free var (sum) so we can't spin it out
+//we need to inline each+iter
+function (array) {
+  (def sum 0)
+  [each array {fun iter (x) (set sum (add sum x)) }]
+}
+
+function match (rule) {
+  return function (input) {
+    return [rule input] //rule is free variable, but it's a bound function, so inline it.
+  }
+}
 ```
 
 easy just to inline that, so it becomes

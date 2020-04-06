@@ -11,9 +11,10 @@ var inputs = [
   '1',
   '(add 1 2)',
   '(add 4 (add 3 (add 2 (add 1 0))))',
-  '[(fun (a b) { add a b }) 7 13]',
+  '[(fun (a b) { add a b }) 7 13]', // could be either spun out or inlined.
   '[{fun fib [n] (if {lt n 2} 1 (add [fib (sub n 1)] [fib (sub n 2)]))} 5]',
-  '(block (def foo 17) (add foo 2))'
+  '(block (def foo 17) (add foo 2))',
+  '{block (def i 0) (def sum 0) (loop [lt i 10] [def sum {add sum (def i [add i 1])}])}'
 ]
 
 var outputs = [
@@ -22,7 +23,8 @@ var outputs = [
   10,
   20,
   8,
-  19
+  19,
+  55
 ]
 
 inputs.forEach(function (_, i) {

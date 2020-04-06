@@ -239,7 +239,7 @@ function isFun(tree) {
  // and convert it to wasm statements. //
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
 
-var DEF = Symbol('def'), IF = Symbol('if'), BLOCK = Symbol('block')
+var DEF = Symbol('def'), IF = Symbol('if'), BLOCK = Symbol('block'), LOOP = Symbol('loop')
 
 function maybe (tree, sym) {
   if(isArray(tree) && eqSymbol(tree[0], 'block') && isSymbol(tree[tree.length-1]))
@@ -282,6 +282,11 @@ exports.flatten = function flatten_all (tree, n) {
           maybe(flatten_all(tree[2], n), p),
           maybe(flatten_all(tree[3], n), p)
         ], p])
+        return true
+      }
+      if(eqSymbol(tree[0], 'loop')) {
+        var p = Symbol('$'+(++n))
+        exprs.push([BLOCK, [LOOP, tree[1], flatten_all(tree[2], n)], p])
         return true
       }
       else {

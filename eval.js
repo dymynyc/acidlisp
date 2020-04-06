@@ -54,8 +54,12 @@ function ev (ast, env) {
   var value
   if(isBasic(ast))
     return ast
-  if(isSymbol(ast) && isDefined(value = lookup(ast, env)))
-    return value
+  if(isSymbol(ast))
+    if(isDefined(value = lookup(ast, env)))
+      return value
+    else
+      throw new Error('undefined symbol:'+ast.description)
+  
   if(isArray(ast) && isDef(ast[0]))
     return env[ast[1].description] = ev(ast[2], env)
 

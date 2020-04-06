@@ -2,9 +2,16 @@ var tape = require('tape')
 var {flatten, stringify, isNumber} = require('../util')
 var parse = require('../parse')
 var ev = require('../eval')
-var env = {a: 7, b: 0, d: 0, e: 0, f: 1, and: ([a]) => a & 1, add: ([a, b])=> a+b }
 var compileWat = require('../compile/wat')
 var wat2wasm = require('../wat2wasm')
+
+var env = {
+  a: 7, b: 0, d: 0, e: 0, f: 1,
+  and: ([a]) => a & 1,
+  add: ([a, b])=> a + b,
+  lt: ([a, b]) => a < b
+}
+
 
 var inputs = [
   '(add (if a 1 2) 3)',
@@ -14,13 +21,15 @@ var inputs = [
   '(if a (if b 1 -1) -10)',
     //(or d e f)
   '(if d 1 (if e 10 (if f 100 -1) -10) -100)',
+  '[block (def n 1) {loop (lt n 100) (def n (add n n))}]'
 ]
 
 var outputs = [
   '(block (if a (def $1 1) (def $1 2)) (def $2 (add $1 3)))',
   '(block (def $1 (add 1 2)))',
   '(block (def $1 (and a 1)) (block (if $1 (def $2 0) (def $2 1)) $2))',
-  '(block (if a (block (if b (def $2 100) (def $2 -1)) (def $1 $2)) (def $1 -1)) $1)'
+  '(block (if a (block (if b (def $2 100) (def $2 -1)) (def $1 $2)) (def $1 -1)) $1)',
+  '(block (def n 1) (loop (lt n 100) (def $1 (add n n)) $1)'
 ]
 
 var values = [
@@ -28,7 +37,8 @@ var values = [
   3,
   0,
   -1,
-  100
+  100,
+  128
 ]
 
 /*
@@ -57,7 +67,9 @@ inputs.forEach(function (_, i) {
     //but the important thing is it behaves correctly.
     //t.equal(stringify(), outputs[i])
     t.equal(ev(ast, {__proto__: env}), values[i])
+    console.log(stringify(flat_ast))
     t.equal(ev(flat_ast, {__proto__: env}), values[i])
+    return t.end()
     var wat = compileWat([Symbol('module'), [Symbol('export'), [
       Symbol('fun'), 
         Object.keys(env).filter(k => isNumber(env[k])).map(k => Symbol(k))

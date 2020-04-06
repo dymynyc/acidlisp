@@ -233,12 +233,29 @@ function isFun(tree) {
   return isArray(tree) && eqSymbol(tree[0], 'fun')
 }
 
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+   // FLATTEN                            //
+  // take everything-is-an-expression   //
+ // and convert it to wasm statements. //
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+
 var DEF = Symbol('def'), IF = Symbol('if'), BLOCK = Symbol('block')
 
 function maybe (tree, sym) {
   if(isArray(tree) && eqSymbol(tree[0], 'block') && isSymbol(tree[tree.length-1]))
     tree[tree.length-1] = [DEF, sym, tree[tree.length-1]]
   return tree
+}
+
+function last (ary) {
+  return ary[ary.length-1]
+}
+
+//trim removes the last value... which might have been added by maybe.
+//yeah, this is ugly.
+function trim(exprs) {
+  if(exprs.length && eqSymbol(last(exprs)[0], 'block') && isSymbol( last(last(exprs)) ))
+    last(exprs).pop()
 }
 
 exports.flatten = function flatten_all (tree, n) {
@@ -257,7 +274,10 @@ exports.flatten = function flatten_all (tree, n) {
 
         var o = Symbol('$'+n)
         var p = Symbol('$'+(++n))
-        exprs.push([BLOCK, [IF,
+
+        //trim off the hanging value, if we don't need it.
+        trim(exprs)
+       exprs.push([BLOCK, [IF,
           m ? o : tree[1],
           maybe(flatten_all(tree[2], n), p),
           maybe(flatten_all(tree[3], n), p)
@@ -269,8 +289,10 @@ exports.flatten = function flatten_all (tree, n) {
           var v = tree[i]
           if(flatten(v)) tree[i] = Symbol('$'+n)
         }
-        //tree.slice(1).forEach((v,i) => {flatten(v)})
-        exprs.push([DEF, Symbol('$'+(++n)), tree])
+        
+        trim(exprs) // trim last value
+        var m = Symbol('$'+(++n))
+        exprs.push([BLOCK, [DEF, m, tree], m])
         return true
       }
     }

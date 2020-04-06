@@ -1,7 +1,7 @@
 var {
   isDefined, isSymbol, isArray, isNull, isBoolean, isString,
   isDef, isEmpty, isFunction, isNumber, isBound, isBasic,
-  eqSymbol, equals
+  eqSymbol, equals, stringify
 } = require('./util')
 
 function lookup (key, env) {
@@ -132,6 +132,8 @@ function ev (ast, env) {
     var fn = ev(ast[0], env)
     return call (fn, ast.slice(1), env)
   }
+
+  throw new Error('could not eval:' +stringify(ast))
 }
 
 exports = module.exports = ev

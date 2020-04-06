@@ -228,3 +228,53 @@ exports.inline = function (tree) {
     else return body //numbers, etc
   })(body)
 }
+
+function isFun(tree) {
+  return isArray(tree) && eqSymbol(tree[0], 'fun')
+}
+
+var DEF = Symbol('def'), IF = Symbol('if'), BLOCK = Symbol('block')
+
+function maybe (tree, sym) {
+  if(isArray(tree) && eqSymbol(tree[0], 'block') && isSymbol(tree[tree.length-1]))
+    tree[tree.length-1] = [DEF, sym, tree[tree.length-1]]
+  return tree
+}
+
+exports.flatten = function flatten_all (tree, n) {
+  n = n || 0
+  var i = 0, exprs = []
+
+  if(isBasic(tree))
+    return [DEF, Symbol('$'+n), tree]
+
+  ;(function flatten (tree) {
+    if(isFun(tree)) //skip
+      ;
+    else if(isArray(tree)) {
+      if(eqSymbol(tree[0], 'if')) {
+        var m = flatten(tree[1])
+
+        var o = Symbol('$'+n)
+        var p = Symbol('$'+(++n))
+        exprs.push([BLOCK, [IF,
+          m ? o : tree[1],
+          maybe(flatten_all(tree[2], n), p),
+          maybe(flatten_all(tree[3], n), p)
+        ], p])
+        return true
+      }
+      else {
+        for(var i = 1; i < tree.length; i++) {
+          var v = tree[i]
+          if(flatten(v)) tree[i] = Symbol('$'+n)
+        }
+        //tree.slice(1).forEach((v,i) => {flatten(v)})
+        exprs.push([DEF, Symbol('$'+(++n)), tree])
+        return true
+      }
+    }
+  })(tree)
+
+  return exprs.length === 1 ? exprs[0] : [BLOCK].concat(exprs)
+}

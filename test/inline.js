@@ -1,7 +1,7 @@
 
 var tape = require('tape')
 var parse = require('../parse')
-var expand = require('../')
+
 var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound,

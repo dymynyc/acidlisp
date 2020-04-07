@@ -5,7 +5,7 @@
 var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound,
-  eqSymbol, equals, stringify, traverse
+  eqSymbol, equals, stringify, traverse, isExpressionTree
 } = require('../util')
 
 function indent (src) {
@@ -177,7 +177,21 @@ exports.def = function ([sym, value], funs, isBlock) {
 
 exports.loop = function ([test, iter], funs) {
   //TODO: expand test incase it's got statements
-  return '(loop (if\n'+
-    indent(compile(test, funs, false)+'\n(then\n'+
-    indent(compile(iter, funs, true))+'\n(br 1))))')
+  if(isExpressionTree(test))
+    return '(loop (if\n'+
+      indent(compile(test, funs, false)+'\n(then\n'+
+      indent(compile(iter, funs, true))+'\n(br 1))))')
+  else {
+    if(!eqSymbol(test[0], 'block'))
+      throw new Error('expected block:'+stringify(test))
+    test = test.slice()
+    var value = test.pop()
+    return '(loop\n'+
+      indent(
+        compile(test, funs, true)+'\n'+
+        '(if '+compile(value, funs, false)+
+          '(then\n' +
+          indent(compile(iter, funs, false) + ' (br 1))))')
+      )
+  }
 }

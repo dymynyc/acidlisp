@@ -77,7 +77,7 @@ function expand (ast, env) {
   else if(isDef(ast[0])) {
     return [Symbol('def'), ast[1], env[ast[1].description] = expand(ast[2], env)]
   }
-  else if(env[ast[0].description]) {
+  else if(isDefined(env[ast[0].description])) {
     return env[ast[0].description](ast.slice(1).map(e => expand(e, env)), env)
   }
   else //if it isn't a defined function, just replace names and fall through.

@@ -4,6 +4,14 @@ var {
   eqSymbol, equals, stringify
 } = require('../util')
 
+function getDefs (ast, defs) {
+  defs = defs || {}
+  if(isArray(ast) && isDef(ast[0]))
+    defs[ast[1].description] = true
+  else if(isArray(ast))
+    ast.forEach(a => getDefs(a, defs))
+  return Object.keys(defs)
+}
 
 function compile (ast) {
   if(isSymbol(ast)) return ast.description
@@ -41,16 +49,39 @@ exports.export = function (args) {
     return '(module.exports = '+compile(args[0])+')'
 }
 
+exports.block = function (args) {
+  return '(' + args.map(compile).join(', ') + ')'
+}
+
+exports.def = function ([key, value]) {
+  return '(' + key.description +' = ' + compile(value) + ')'
+}
+
 exports.add = function (args) {
   return '(' + args.map(compile).join(' + ')+')'
+}
+exports.and = function (args) {
+  return '(' + args.map(compile).join(' & ')+')'
+}
+exports.lt = function ([a, b]) {
+  return '(' + compile(a) + ' < ' + compile(b) +')'
 }
 exports.fun = function (_args) {
   _args = _args.slice(0)
   var name = isSymbol(_args[0]) ? _args.shift() : null
   var args = _args.shift()
   var body = _args
+  var defs = getDefs(body[0])
+  console.log("DEFS", defs)
   return ('(function '+(name?name+' ':'') + '('+args.map(compile).join(', ')+') {\n'+
     //todo: extract defs, put them first.
+    (defs.length ? 'var ' + defs.join(', ') + ';\n' : '') +
     indent('return ' + compile(body[0])) +
   '\n})')
+}
+
+exports.loop = function ([test, body]) {
+  return '(function () {'+
+    'var result = null; while('+compile(test)+'){result ='+compile(body)+'} return result;\n'+
+  '})()'
 }

@@ -308,7 +308,36 @@ exports.flatten = function flatten (tree, n) {
         tree[1], insertDef(tree[2], sym), insertDef(tree[3], sym)
       ], sym]
   }
+  else if(eqSymbol(tree[0], 'block')) {
+    var block = [BLOCK]
+    for(var i = 1; i < tree.length; i++) {
+      if(isExpressionTree(tree[i]))
+        block.push(tree[i])
+      else {
+        var _tree = flatten(tree[i])
+        if(!eqSymbol(_tree[0], 'block'))
+          throw new Error('expected block!:'+stringify(_tree))
+        //if we are not at the last block expression
+        //we can dump the value symbol
+        if(isSymbol(last(_tree) && i + 1 < tree.length))
+          _tree.pop()
 
+        //append the items into the same block
+        for(var j = 1; j < _tree.length; j++)
+          block.push(_tree[j])
+
+        return block
+      }
+    }
+  }
+  else if(eqSymbol(tree[0], 'loop')) {
+    return [BLOCK, [LOOP,
+      isExpressionTree(tree[1]) ? tree[1] : flatten(tree[1], n),
+      insertDef(
+        isExpressionTree(tree[2]) ? tree[2] : flatten(tree[2], n),
+        $(n)
+      )], $(n)]
+  }
   else {
     var pre = [BLOCK]
     var _tree = [tree[0]]

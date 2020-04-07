@@ -5,8 +5,18 @@
 var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound,
-  eqSymbol, equals, stringify, traverse, isExpressionTree
+  eqSymbol, equals, stringify, traverse,
+  isExpressionTree
 } = require('../util')
+
+function getDefs (ast, defs) {
+  defs = defs || {}
+  if(isArray(ast) && isDef(ast[0]))
+    defs[$(ast[1])] = true
+  else if(isArray(ast))
+    ast.forEach(a => getDefs(a, defs))
+  return Object.keys(defs).map(k => Symbol(k))
+}
 
 function indent (src) {
   return src.split('\n').map(line => '  ' + line).join('\n')
@@ -43,15 +53,6 @@ function getFun (f) {
   if(isFunction (f)) return f.source
   if(isFun (f)) return f
   throw new Error('cannot find function:'+stringify(f))
-}
-
-function getDefs (ast, defs) {
-  defs = defs || {}
-  if(isArray(ast) && isDef(ast[0]))
-    defs[$(ast[1])] = true
-  else if(isArray(ast))
-    ast.forEach(a => getDefs(a, defs))
-  return Object.keys(defs).map(k => Symbol(k))
 }
 
 function compile (ast, funs, isBlock) {

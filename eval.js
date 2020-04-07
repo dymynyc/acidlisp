@@ -22,7 +22,7 @@ var core = {
 
 function bind(ast, env) {
   var value
-  if(isSymbol(ast) && isDefined(value = lookup(env, ast)))
+  if(isSymbol(ast) && isDefined(value = lookup(ast, env)))
     return value
   else if(isBasic(ast)) return ast
   else if(isArray(ast) && ast[0] === syms.fun)
@@ -38,7 +38,7 @@ function bind(ast, env) {
 }
 
 function isFun(ast) {
-  return isArray(ast) && eqSymbol(ast[0], 'fun')
+  return isArray(ast) && ast[0] === syms.fun
 }
 
 function call (fun, argv, env) {
@@ -53,7 +53,6 @@ function call (fun, argv, env) {
   return ev(body, _env)
 }
 
-
 function ev (ast, env) {
   var value
   if(isBasic(ast))
@@ -63,11 +62,11 @@ function ev (ast, env) {
       return value
     else
       throw new Error('undefined symbol:'+ast.description)
-  
-  if(isArray(ast) && isDef(ast[0]))
+
+  if(ast[0] === syms.def)
     return env[ast[1].description] = ev(ast[2], env)
 
-  if(isArray(ast) && ast[0] === syms.if)
+  if(ast[0] === syms.if)
     if(ev(ast[1], env))
       return ev(ast[2], env)
     else if(ast.length > 2)
@@ -75,7 +74,7 @@ function ev (ast, env) {
     else
       return null
 
-  if(isArray(ast) && ast[0] === syms.loop) {
+  if(ast[0] === syms.loop) {
       var test = ast[1]
       var body = ast[2]
       while(ev(test, env)) {
@@ -84,7 +83,7 @@ function ev (ast, env) {
       return value
     }
 
-  if(isArray(ast) && ast[0] === syms.fun) {
+  if(ast[0] === syms.fun) {
     var name, args, body
     if(isSymbol(ast[1]))
       name = ast[1], args = ast[2], body = ast[3]
@@ -118,25 +117,56 @@ function ev (ast, env) {
       if(foo) then value = bar else value = baz
       if(value) qux
     */
-    return bind(ast, env)
+    if(isSymbol(ast[1]))
+      return [syms.fun, ast[1], ast[2], bind(ast[3], env)]
+    else {
+      var _ast = bind(ast[2], env)
+      return [syms.fun, ast[1], _ast]
+    }
   }
 
-  if(isArray(ast) && eqSymbol(ast[0], 'block')) {
+  if(ast[0] === syms.block) {
     for(var i = 1; i < ast.length; i++)
       value = ev(ast[i], env)
     return value
   }
 
+  //XXX here, export is only allowed at the top level?
+  // should export be allowed inside if?
+  // I guess you can put an def in the if and export the reference.
+  if(ast[0] === syms.module) {
+    var exports = {}, single = null
+    for(var i = 1; i < ast.length; i++) {
+      if(isArray(ast[i]) && ast[i][0] === syms.export) {
+        if(isSymbol(ast[i][1]) && ast[i].length == 3) {
+          if(single === true)
+            throw new Error('already exported a single symbol, cannot export multiple')
+          single = false
+          exports[ast[i][1].description] = ev(ast[i][2], env)
+        }
+        else {
+          if(single !== null)
+            throw new Error('already exported ' (single ? 'single' : 'multiple') + ' cannot export an additional single value')
+          single = true
+          exports = ev(ast[i][1], env)
+        }
+      }
+      else
+        ev(ast[i], env)
+    }
+    return exports
+  }
+
   //user defined functions
-  if(isArray(ast) && isSymbol(ast[0]) && isFun(value = lookup(ast[0], env)))
+  if(isSymbol(ast[0]) && isFun(value = lookup(ast[0], env)))
     return call(value, ast.slice(1), env)
 
   //built in functions
-  if(isArray(ast) && isSymbol(ast[0]) && isFunction(value = lookup(ast[0], env)))
+  if(isSymbol(ast[0]) && isFunction(value = lookup(ast[0], env)))
     return value(ast.slice(1).map(e => ev(e, env)))
 
   //expression that evaluates to a function
-  if(isArray(ast) && isArray(ast[0])) {
+  if(isArray(ast[0])) {
     var fn = ev(ast[0], env)
     return call (fn, ast.slice(1), env)
   }

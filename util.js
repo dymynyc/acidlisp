@@ -11,7 +11,7 @@ function isSymbol(s) {
 }
 
 function isDef(s) {
-  return isSymbol(s) && 'def' === s.description
+  return syms.def === s
 }
 
 function isEmpty (e) {
@@ -92,7 +92,7 @@ function map (tree, branch, leaf) {
   if(!leaf) leaf = id
   if(isArray(tree)) {
     var b = branch(tree)
-    if('undefined' !== b) return b
+    if(isDefined(b)) return b
     else
       return tree.map(e => tree(e, branch, leaf))
   }
@@ -114,7 +114,7 @@ exports.freeVariables = function (fun) {
   var vars = {}, free = {}
   args.forEach(k => vars[k.description] = true)
   traverse(body, function (branch) {
-    if(branch[0] == syms.def)
+    if(branch[0] === syms.def)
       vars[branch[1].description] = true
     else if(eqSymbol(branch[0], 'ref') && isFunction (branch[1]))
       return false
@@ -230,9 +230,9 @@ function isFun(tree) {
 var isExpressionTree = exports.isExpressionTree = function (tree) {
   if(!isArray(tree)) return true
   else if(
-    tree[0] == syms.if ||
-    tree[0] == syms.loop ||
-    tree[0] == syms.block
+    tree[0] === syms.if ||
+    tree[0] === syms.loop ||
+    tree[0] === syms.block
   ) return false
   else
     return tree.every(exports.isExpressionTree)

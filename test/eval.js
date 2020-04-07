@@ -1,6 +1,9 @@
 var tape = require('tape')
 var parse = require('../parse')
 var ev = require('../eval')
+var compileWat = require('../compile/wat')
+var wat2wasm = require('../wat2wasm')
+var stringify = require('../util').stringify
 var env = {
   add: function ([a, b]) { return a + b },
   sub: function ([a, b]) { return a - b },
@@ -32,6 +35,20 @@ inputs.forEach(function (_, i) {
     var ast = parse(inputs[i])
     t.ok(ast, 'can parse')
     t.equal(ev(ast, env), outputs[i])
+    t.end()
+  })
+})
+
+inputs.forEach(function (_, i) {
+  tape('wat:'+inputs[i] + ' => ' + outputs[i], function (t) {
+    var ast = parse(inputs[i])
+
+    var src = [Symbol('module'), [Symbol('export'), [Symbol('fun'), [], ast]]]
+    console.log(stringify(src))
+    var wat = compileWat(src)
+    console.log("WAT", wat)
+    var module = wat2wasm(wat)
+    t.equal(module(), outputs[i])
     t.end()
   })
 })

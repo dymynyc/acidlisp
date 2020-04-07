@@ -75,9 +75,9 @@ var flatten = module.exports = function flatten (tree, n) {
         for(var j = 1; j < _tree.length; j++)
           block.push(_tree[j])
 
-        return block
       }
     }
+    return block
   }
   else if(tree[0] == syms.loop) {
     var isExpr = isExpressionTree(tree[1])

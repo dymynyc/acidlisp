@@ -43,10 +43,9 @@ function isBasic(b) {
 }
 function isBound(b) {
   return (
-     isArray(b) && isSymbol(b[0]) && b[0].description == 'ref'
-  || isFunction(b)
-  || (isArray(b) && b.every(isBound))
-  || isBasic(b)
+    isFunction(b) ||
+    (isArray(b) && b.every(isBound)) ||
+    isBasic(b)
   )
 }
 
@@ -115,7 +114,7 @@ exports.freeVariables = function (fun) {
   var vars = {}, free = {}
   args.forEach(k => vars[k.description] = true)
   traverse(body, function (branch) {
-    if(eqSymbol(branch[0], 'def'))
+    if(branch[0] == syms.def)
       vars[branch[1].description] = true
     else if(eqSymbol(branch[0], 'ref') && isFunction (branch[1]))
       return false
@@ -201,10 +200,6 @@ function searchFunctions(tree, funs) {
   return funs
 }
 
-exports.unrollExports = function (tree) {
-  console.log("EXPORTS", exports.getExports(tree))
-  
-}
 exports.unroll = function unroll (tree) {
   var funs = searchFunctions(tree, [])
   return [syms.module]

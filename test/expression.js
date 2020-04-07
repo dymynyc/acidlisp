@@ -21,10 +21,12 @@ var inputs = [
   '(if a (if b 2 1) 0)', //(AND a b)
   '(if d 1 (if e 1 0))', //(OR d e)
   '(if d 1 (if e 1 (if f 1 0)))', //(OR d e)
+  '(block (def i 1) (loop (lt i 100) (def i (add i i))))'
 ]
 
 var isExprTree = [
   true,
+  false,
   false,
   false,
   false,
@@ -39,6 +41,7 @@ var outputs = [
  '(block (if a (if b (def $1 2) (def $1 1)) (def $1 0)) $1)',
  '(block (if d (def $1 1) (if e (def $1 1) (def $1 0))) $1)',
  '(block (if d (def $1 1) (if e (def $1 1) (if f (def $1 1) (def $1 0)))) $1)',
+ '(block (def i 1) (loop (lt i 100) (def $1 (def i (add i i)))) $1)'
 ]
 
 var values = [
@@ -48,7 +51,6 @@ var values = [
   1,
   0,
   1,
-  100,
   128
 ]
 

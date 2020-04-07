@@ -41,7 +41,6 @@ function isFun(f) {
 
 function getFun (f) {
   if(isFunction (f)) return f.source
-  if(eqSymbol(f, 'ref') && isFunction(f[1])) return f[1].source
   if(isFun (f)) return f
   throw new Error('cannot find function:'+stringify(f))
 }
@@ -69,9 +68,6 @@ function compile (ast, funs, isBlock) {
     if(fn)
       return fn(ast.slice(1), funs, isBlock)
     else {
-//      console.log("FN_NAME", ast[0])
-//      fn_name = /^f\d+$/.test(fn_name) ? +fn_name.substring(1) : '$'+fn_name
-  
       if(!~(fn_name = funs.indexOf(ast[0]))) 
         throw new Error('could not index function:' + stringify(ast[0]))
 
@@ -176,7 +172,6 @@ exports.block = function (args, funs, isBlock) {
 }
 
 exports.def = function ([sym, value], funs, isBlock) {
- // console.log(new Error('def '+String(sym) + ' block?'+isBlock))
   return '(local.' +(isBlock ? 'set':'tee')+' '+$(sym)+' ' + compile(value, funs)+')'
 }
 

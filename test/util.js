@@ -9,14 +9,26 @@ var wat2wasm = require('../wat2wasm')
 var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound,
-  eqSymbol, equals
+  eqSymbol, equals, stringify
 } = require('../util')
 
 function sym2string (sym) {
   return sym.description
 }
 
-var env = {add: function ([a, b]) { return a + b }}
+var env = {
+  add: function ([a, b]) { return a + b },
+  list: function (args) { return args },
+  reduce: function ([list, iter, acc]) {
+    return list.reduce((acc, item) => iter([acc, item]), acc)
+  },
+  get: function ([list, item]) {
+    return list[item]
+  },
+  map: function ([list, fn]) {
+    return list.map((v,i) => fn([v, i]))
+  }
+}
 
 tape('free variables', function (t) {
 
@@ -84,12 +96,52 @@ tape('free variables', function (t) {
   var funD = wat2wasm(compileWat(unrolled))
   t.deepEqual(funD(3), 5)
 
+
+//  var points = `
+//  (module
+//    (def point (struct {x: f64 y: f64}))
+//    (def length {fun [(p point)] (sqrt (add (mul p.x p.x) (mul p.y p.y)))})
+//  )`
+
+  var src3 = expand(parse(`
+    (module
+      (def sum {fun [ary] (reduce ary add 0) })
+      (export {fun [] (sum [list 1 2 3 4 5 6])})
+    )
+  `), env)
+
+  var sum = src3.pop()[1]
+  console.log("SRC3", sum)
+  console.log('UROLL', u.unroll(sum)[1])
+  var fun21 = wat2wasm(compileWat(u.unroll(sum)))
+  console.log(fun21)
+  t.equal(fun21(), 21)
+
+  var src4 = expand(parse(`
+    (module
+      (def primes [list 2 3 5 7 11])
+      (export {fun [] (get primes 3)})
+    )
+  `), env)
+
+  console.log(u.unrollExports(src4))
+
+  //a list,
+  //map to an array of functions,
+  //function that returns one of those functions
+  //call that function (returning a number)
+  //everything gets flattened!
+
+  var src5 = expand(parse(`
+    (module
+      (def primes [list 2 3 5 7 11])
+      (def get_primes (map primes {fun [v i] {fun () (get primes i)}}))
+      (export {fun [] ((get get_primes 4)) })
+    )
+  `), env)
+  console.log(src5)
+  console.log(stringify(src5))
+
   t.end()
 
-  var points = `
-  (module
-    (def point (struct {x: f64 y: f64}))
-    (def length {fun [(p point)] (sqrt (add (mul p.x p.x) (mul p.y p.y)))})
-  )
-  `
 })

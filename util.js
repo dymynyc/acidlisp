@@ -8,8 +8,6 @@ function isSymbol(s) {
   return 'symbol' === typeof s
 }
 
-var isArray = Array.isArray
-
 function isDef(s) {
   return isSymbol(s) && 'def' === s.description
 }
@@ -258,12 +256,90 @@ function trim(exprs) {
     last(exprs).pop()
 }
 
+var statements = {if:true, loop: true}
+var isExpressionTree = exports.isExpressionTree = function (tree) {
+  if(!isArray(tree)) return true
+  else if(
+    eqSymbol(tree[0], 'if') ||
+    eqSymbol(tree[0], 'loop') ||
+    eqSymbol(tree[0], 'block')
+  ) return false
+  else
+    return tree.every(exports.isExpressionTree)
+}
+
+
+function $ (n) {
+  return Symbol('$'+n)
+}
+
+function trim (tree) {
+  if(isArray(tree) && tree.length == 2 && eqSymbol(tree[0], 'block'))
+    return tree[1]
+  return tree
+}
+
+function insertDef(tree, sym) {
+  if(isExpressionTree(tree))
+    return [DEF, sym, tree]
+  else {
+    var _tree = exports.flatten(tree)
+    if(isSymbol(last(_tree))) {
+      //it so happens that the trailing symbol is the one
+      //we need to define, then it will already be set, so just insert it.
+      if(eqSymbol(last(_tree), sym.description)) {
+        _tree.pop()
+        return trim(_tree)
+      }
+    }
+    _tree[tree.length-1] = [DEF, sym, last(tree)]
+    return trim(_tree)
+  }
+}
+
+exports.flatten = function flatten (tree, n) {
+  n = n || 1
+  if(isExpressionTree(tree)) return tree
+
+  if(eqSymbol(tree[0], 'if')) {
+    var sym = $(n)
+    if(isExpressionTree(tree[1]))
+      return [BLOCK, [IF,
+        tree[1], insertDef(tree[2], sym), insertDef(tree[3], sym)
+      ], sym]
+  }
+
+  else {
+    var pre = [BLOCK]
+    var _tree = [tree[0]]
+    tree.forEach((branch,i) => {
+      if(isExpressionTree(branch)) _tree[i] = branch
+      else {
+        var _branch = flatten(branch, n+i)
+        pre.push(_branch)
+        if(isSymbol(last(_branch))) {
+          _tree[i] = _branch.pop()
+          if(_branch.length == 2) //[block, something]
+            pre[pre.length-1] = _branch[1]
+        }
+        else {
+          _branch[_branch.length-1] = [DEF, $(n+i), last(_branch)]
+          _tree[i] = $(n+i)
+        }
+      }
+    })
+    pre.push(_tree)
+    return pre
+  }
+}
+
+return
 exports.flatten = function flatten_all (tree, n) {
   n = n || 0
   var i = 0, exprs = []
 
   if(isBasic(tree))
-    return [DEF, Symbol('$'+n), tree]
+    return true [DEF, Symbol('$'+n), tree]
 
   ;(function flatten (tree) {
     if(isFun(tree)) //skip
@@ -284,9 +360,16 @@ exports.flatten = function flatten_all (tree, n) {
         ], p])
         return true
       }
-      if(eqSymbol(tree[0], 'loop')) {
+      else if(eqSymbol(tree[0], 'loop')) {
         var p = Symbol('$'+(++n))
-        exprs.push([BLOCK, [LOOP, tree[1], flatten_all(tree[2], n)], p])
+
+        exprs.push([BLOCK, [LOOP, tree[1], tree[2]], p])
+        return true
+      }
+      else if(eqSymbol(tree[0], 'block')) {
+        for(var i = 1; i < tree.length; i++)
+          flatten(tree[i])
+//        exprs.push(tree)
         return true
       }
       else {
@@ -294,7 +377,7 @@ exports.flatten = function flatten_all (tree, n) {
           var v = tree[i]
           if(flatten(v)) tree[i] = Symbol('$'+n)
         }
-        
+
         trim(exprs) // trim last value
         var m = Symbol('$'+(++n))
         exprs.push([BLOCK, [DEF, m, tree], m])

@@ -1,5 +1,5 @@
 var parse   = require('../parse')
-var expand  = require('../')
+var ev  = require('../eval')
 var tape    = require('tape')
 var u       = require('../util')
 var inspect = require('util').inspect
@@ -32,7 +32,7 @@ var env = {
 
 tape('free variables', function (t) {
 
-  var fn = expand(parse('(fun fn (foo bar) (cat foo baz bar))'), {})
+  var fn = ev(parse('(fun fn (foo bar) (cat foo baz bar))'), {})
   console.log(fn)
   console.log(u.freeVariables(fn))
 
@@ -41,23 +41,25 @@ tape('free variables', function (t) {
   var ddd = function () {}
   ddd.source = parse('(fun ddd () null)')
 
-  var fn = expand(parse('(fun fn (foo bar) (ddd foo baz bar))'), {ddd: ddd})
+  var fn = ev(parse('(fun fn (foo bar) (ddd foo baz bar))'), {ddd: ddd})
   console.log(inspect(fn, {depth: 10, colors: true}))
   t.deepEqual(u.freeVariables(fn).map(sym2string), ['baz'])
 
   //free variables doesn't include BOUND functions.
-  var fn2 = expand(parse('(fun fn (foo bar) (ddd foo bar))'), {ddd: ddd})
+  var fn2 = ev(parse('(fun fn (foo bar) (ddd foo bar))'), {ddd: ddd})
 
   //should be completely flat
   console.log(u.stringify(u.unroll(fn2)))
 
   //functions evaled at load time, but everything is fully bound
-  var seven = expand(parse(`
-  (module
+  var ast = parse(`
+  (block
     (def create {fun (x) [fun () x]})
     (def seven [create 7])
     seven)
-  `), {})[3]
+  `)
+  console.log("EVAL seven", stringify(ast))
+  var seven = ev(ast, {})
 
   t.deepEqual(u.stringify(u.unroll(seven)), '(module (export (fun () 7)))')
   console.log("COMPILE.js", compileJs(u.unroll(seven)))
@@ -75,7 +77,7 @@ tape('free variables', function (t) {
     seven)
   `
   var ast = parse(src)
-  var seven2 = expand(ast, env)[4]
+  var seven2 = ev(ast, env)[4]
   t.deepEqual(u.stringify(u.unroll(seven2)), '(module (export (fun () 7)))')
   var fun7 = wat2wasm(compileWat(u.unroll(seven2)))
   t.deepEqual(fun7(), 7)

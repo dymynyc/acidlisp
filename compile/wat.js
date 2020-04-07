@@ -52,11 +52,10 @@ function getDefs (ast, defs) {
     defs[$(ast[1])] = true
   else if(isArray(ast))
     ast.forEach(a => getDefs(a, defs))
-  //console.log("DEFS", defs)
   return Object.keys(defs).map(k => Symbol(k))
 }
 
-function compile (ast, funs) {
+function compile (ast, funs, isBlock) {
   //remove refs
   if(isArray(ast) && eqSymbol(ast[0], 'ref')) {
     if(isFunction(ast[1])) ast = ast[2]
@@ -68,9 +67,9 @@ function compile (ast, funs) {
     var fn_name = ast[0].description
     var fn = exports[fn_name]
     if(fn)
-      return fn(ast.slice(1))
+      return fn(ast.slice(1), funs, isBlock)
     else {
-      console.log("FN_NAME", ast[0])
+//      console.log("FN_NAME", ast[0])
 //      fn_name = /^f\d+$/.test(fn_name) ? +fn_name.substring(1) : '$'+fn_name
   
       if(!~(fn_name = funs.indexOf(ast[0]))) 
@@ -82,7 +81,7 @@ function compile (ast, funs) {
   else if(isNumber(ast))
     return '(i32.const '+ast+')' //TODO other number types
   else if(isSymbol(ast))
-    return '(get_local '+ $(ast) + ')'
+    return '(local.get '+ $(ast) + ')'
   else throw new Error('unsupported type:'+stringify(ast))
 
   //hard coded strings will be encoded in a data section
@@ -101,7 +100,7 @@ function getFunctions (tree, funs) {
   return funs
 }
 
-exports = module.exports = function (ast, funs) {
+exports = module.exports = function (ast, funs, isBlock) {
   return compile(ast, funs || [])
 }
 
@@ -146,12 +145,12 @@ exports.if = function ([test, then, e_then], funs) {
   if(e_then)
     return '(if\n' + indent(
       compile(test, funs) + '\n(then '+
-      compile(then, funs)+')\n(else '+
-      compile(e_then, funs) + ') )\n')
+      compile(then, funs, true)+')\n(else '+
+      compile(e_then, funs, true) + '))')
   else
     return '(if\n' + indent(
-      compile(test, funs) + '\n(then '+
-      compile(then, funs)+' ))\n')
+      compile(test, funs, true) + '\n(then '+
+      compile(then, funs, true)+'))')
 
 //args.map(e => compile(e, funs)).join('\n')) + ')\n'
 }
@@ -172,10 +171,18 @@ exports.and = function and (args, funs) {
 exports.lt = function (args, funs) {
   return '(i32.lt_s '+compile(args[0], funs) + ' ' + compile(args[1], funs)+')'
 }
-exports.block = function (args, funs) {
-  return args.map(e => compile(e, funs)).join('\n')
+exports.block = function (args, funs, isBlock) {
+  return args.map((e,i) => compile(e, funs, true)).join('\n')
 }
 
-exports.def = function ([sym, value], funs) {
-  return '(set_local '+$(sym)+' ' + compile(value, funs)+')'
+exports.def = function ([sym, value], funs, isBlock) {
+ // console.log(new Error('def '+String(sym) + ' block?'+isBlock))
+  return '(local.' +(isBlock ? 'set':'tee')+' '+$(sym)+' ' + compile(value, funs)+')'
+}
+
+exports.loop = function ([test, iter], funs) {
+  //TODO: expand test incase it's got statements
+  return '(loop (if\n'+
+    indent(compile(test, funs, false)+'\n(then\n'+
+    indent(compile(iter, funs, true))+'\n(br 1))))')
 }

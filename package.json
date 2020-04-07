@@ -8,6 +8,7 @@
     "url": "git://github.com/dominictarr/l6.git"
   },
   "dependencies": {
+    "stack-expression": "^1.4.1",
     "tape": "^4.13.2"
   },
   "devDependencies": {},

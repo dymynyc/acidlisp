@@ -1,3 +1,5 @@
+var syms = require('./symbols')
+
 var isArray = Array.isArray
 
 function isDefined(d) {
@@ -205,13 +207,12 @@ exports.unrollExports = function (tree) {
 }
 exports.unroll = function unroll (tree) {
   var funs = searchFunctions(tree, [])
-  return [Symbol('module')]
-    .concat(funs.map((fn, i) => [Symbol('def'), Symbol('$f'+i), remap(fn.source, funs)] ))
-    .concat([[Symbol('export'), remap(tree, funs)]])
+  return [syms.module]
+    .concat(funs.map((fn, i) => [syms.def, Symbol('$f'+i), remap(fn.source, funs)] ))
+    .concat([[syms.exports, remap(tree, funs)]])
 }
 
 exports.inline = function (tree) {
-  console.log(tree)
   var fn = tree[0]
   var args = tree.slice(1)
   var fn_args = isSymbol(fn[1]) ? fn[2] : fn[1]
@@ -228,138 +229,16 @@ exports.inline = function (tree) {
 }
 
 function isFun(tree) {
-  return isArray(tree) && eqSymbol(tree[0], 'fun')
+  return isArray(tree) && tree[0] == syms.fun
 }
 
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-   // FLATTEN                            //
-  // take everything-is-an-expression   //
- // and convert it to wasm statements. //
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-
-var DEF = Symbol('def'), IF = Symbol('if'), BLOCK = Symbol('block'), LOOP = Symbol('loop')
-
-function maybe (tree, sym) {
-  if(isArray(tree) && eqSymbol(tree[0], 'block') && isSymbol(tree[tree.length-1]))
-    tree[tree.length-1] = [DEF, sym, tree[tree.length-1]]
-  return tree
-}
-
-function last (ary) {
-  return ary[ary.length-1]
-}
-
-//trim removes the last value... which might have been added by maybe.
-//yeah, this is ugly.
-function trim(exprs) {
-  if(exprs.length && eqSymbol(last(exprs)[0], 'block') && isSymbol( last(last(exprs)) ))
-    last(exprs).pop()
-}
-
-var statements = {if:true, loop: true}
 var isExpressionTree = exports.isExpressionTree = function (tree) {
   if(!isArray(tree)) return true
   else if(
-    eqSymbol(tree[0], 'if') ||
-    eqSymbol(tree[0], 'loop') ||
-    eqSymbol(tree[0], 'block')
+    tree[0] == syms.if ||
+    tree[0] == syms.loop ||
+    tree[0] == syms.block
   ) return false
   else
     return tree.every(exports.isExpressionTree)
-}
-
-
-function $ (n) {
-  return Symbol('$'+n)
-}
-
-function trim (tree) {
-  if(isArray(tree) && tree.length == 2 && eqSymbol(tree[0], 'block'))
-    return tree[1]
-  return tree
-}
-
-function insertDef(tree, sym) {
-  if(isExpressionTree(tree))
-    return [DEF, sym, tree]
-  else {
-    var _tree = exports.flatten(tree)
-    if(isSymbol(last(_tree))) {
-      //it so happens that the trailing symbol is the one
-      //we need to define, then it will already be set, so just insert it.
-      if(eqSymbol(last(_tree), sym.description)) {
-        _tree.pop()
-        return trim(_tree)
-      }
-    }
-    _tree[tree.length-1] = [DEF, sym, last(tree)]
-    return trim(_tree)
-  }
-}
-
-exports.flatten = function flatten (tree, n) {
-  n = n || 1
-  if(isExpressionTree(tree)) return tree
-
-  if(eqSymbol(tree[0], 'if')) {
-    var sym = $(n)
-    if(isExpressionTree(tree[1]))
-      return [BLOCK, [IF,
-        tree[1], insertDef(tree[2], sym), insertDef(tree[3], sym)
-      ], sym]
-  }
-  else if(eqSymbol(tree[0], 'block')) {
-    var block = [BLOCK]
-    for(var i = 1; i < tree.length; i++) {
-      if(isExpressionTree(tree[i]))
-        block.push(tree[i])
-      else {
-        var _tree = flatten(tree[i])
-        if(!eqSymbol(_tree[0], 'block'))
-          throw new Error('expected block!:'+stringify(_tree))
-        //if we are not at the last block expression
-        //we can dump the value symbol
-        if(isSymbol(last(_tree) && i + 1 < tree.length))
-          _tree.pop()
-
-        //append the items into the same block
-        for(var j = 1; j < _tree.length; j++)
-          block.push(_tree[j])
-
-        return block
-      }
-    }
-  }
-  else if(eqSymbol(tree[0], 'loop')) {
-    var isExpr = isExpressionTree(tree[1])
-    var m = isExpr ? n : n + 1
-    return [BLOCK, [LOOP,
-      isExpr ? tree[1] : flatten(tree[1], n),
-      insertDef(
-        isExpressionTree(tree[2]) ? tree[2] : flatten(tree[2], m),
-        $(m)
-      )], $(m)]
-  }
-  else {
-    var pre = [BLOCK]
-    var _tree = [tree[0]]
-    tree.forEach((branch,i) => {
-      if(isExpressionTree(branch)) _tree[i] = branch
-      else {
-        var _branch = flatten(branch, n+i)
-        pre.push(_branch)
-        if(isSymbol(last(_branch))) {
-          _tree[i] = _branch.pop()
-          if(_branch.length == 2) //[block, something]
-            pre[pre.length-1] = _branch[1]
-        }
-        else {
-          _branch[_branch.length-1] = [DEF, $(n+i), last(_branch)]
-          _tree[i] = $(n+i)
-        }
-      }
-    })
-    pre.push(_tree)
-    return pre
-  }
 }

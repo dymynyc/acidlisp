@@ -1,7 +1,8 @@
 var tape = require('tape')
 var {
-  flatten, stringify, isNumber, isExpressionTree
+  stringify, isNumber, isExpressionTree
 } = require('../util')
+var flatten = require('../flatten')
 var parse = require('../parse')
 var ev = require('../eval')
 var compileWat = require('../compile/wat')

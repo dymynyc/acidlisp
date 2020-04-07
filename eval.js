@@ -3,6 +3,7 @@ var {
   isDef, isEmpty, isFunction, isNumber, isBound, isBasic,
   eqSymbol, equals, stringify
 } = require('./util')
+var syms = require('./symbols')
 
 function lookup (key, env) {
   return env[key.description]
@@ -16,13 +17,16 @@ function lookup (key, env) {
 //}
 
 var core = {
-  if: true, fun: true, def: true
+  if: true, fun: true, def: true, loop: true, block: true
 }
+
 function bind(ast, env) {
   var value
   if(isSymbol(ast) && isDefined(value = lookup(env, ast)))
     return value
   else if(isBasic(ast)) return ast
+  else if(isArray(ast) && ast[0] === syms.fun)
+    return ast
   else if(isArray(ast)) {
     if(core[ast[0].description])
       return [ast[0]].concat(ast.slice(1).map(e => bind(e, env)))
@@ -63,7 +67,7 @@ function ev (ast, env) {
   if(isArray(ast) && isDef(ast[0]))
     return env[ast[1].description] = ev(ast[2], env)
 
-  if(isArray(ast) && eqSymbol(ast[0], 'if'))
+  if(isArray(ast) && ast[0] === syms.if)
     if(ev(ast[1], env))
       return ev(ast[2], env)
     else if(ast.length > 2)
@@ -71,7 +75,7 @@ function ev (ast, env) {
     else
       return null
 
-  if(isArray(ast) && eqSymbol(ast[0], 'loop')) {
+  if(isArray(ast) && ast[0] === syms.loop) {
       var test = ast[1]
       var body = ast[2]
       while(ev(test, env)) {
@@ -80,7 +84,7 @@ function ev (ast, env) {
       return value
     }
 
-  if(isArray(ast) && eqSymbol(ast[0], 'fun')) {
+  if(isArray(ast) && ast[0] === syms.fun) {
     var name, args, body
     if(isSymbol(ast[1]))
       name = ast[1], args = ast[2], body = ast[3]

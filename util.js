@@ -331,12 +331,14 @@ exports.flatten = function flatten (tree, n) {
     }
   }
   else if(eqSymbol(tree[0], 'loop')) {
+    var isExpr = isExpressionTree(tree[1])
+    var m = isExpr ? n : n + 1
     return [BLOCK, [LOOP,
-      isExpressionTree(tree[1]) ? tree[1] : flatten(tree[1], n),
+      isExpr ? tree[1] : flatten(tree[1], n),
       insertDef(
-        isExpressionTree(tree[2]) ? tree[2] : flatten(tree[2], n),
-        $(n)
-      )], $(n)]
+        isExpressionTree(tree[2]) ? tree[2] : flatten(tree[2], m),
+        $(m)
+      )], $(m)]
   }
   else {
     var pre = [BLOCK]
@@ -360,60 +362,4 @@ exports.flatten = function flatten (tree, n) {
     pre.push(_tree)
     return pre
   }
-}
-
-return
-exports.flatten = function flatten_all (tree, n) {
-  n = n || 0
-  var i = 0, exprs = []
-
-  if(isBasic(tree))
-    return true [DEF, Symbol('$'+n), tree]
-
-  ;(function flatten (tree) {
-    if(isFun(tree)) //skip
-      ;
-    else if(isArray(tree)) {
-      if(eqSymbol(tree[0], 'if')) {
-        var m = flatten(tree[1])
-
-        var o = Symbol('$'+n)
-        var p = Symbol('$'+(++n))
-
-        //trim off the hanging value, if we don't need it.
-        trim(exprs)
-       exprs.push([BLOCK, [IF,
-          m ? o : tree[1],
-          maybe(flatten_all(tree[2], n), p),
-          maybe(flatten_all(tree[3], n), p)
-        ], p])
-        return true
-      }
-      else if(eqSymbol(tree[0], 'loop')) {
-        var p = Symbol('$'+(++n))
-
-        exprs.push([BLOCK, [LOOP, tree[1], tree[2]], p])
-        return true
-      }
-      else if(eqSymbol(tree[0], 'block')) {
-        for(var i = 1; i < tree.length; i++)
-          flatten(tree[i])
-//        exprs.push(tree)
-        return true
-      }
-      else {
-        for(var i = 1; i < tree.length; i++) {
-          var v = tree[i]
-          if(flatten(v)) tree[i] = Symbol('$'+n)
-        }
-
-        trim(exprs) // trim last value
-        var m = Symbol('$'+(++n))
-        exprs.push([BLOCK, [DEF, m, tree], m])
-        return true
-      }
-    }
-  })(tree)
-
-  return exprs.length === 1 ? exprs[0] : [BLOCK].concat(exprs)
 }

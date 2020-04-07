@@ -4,6 +4,19 @@ playing around with the idea of a macro based language.
 I want it to feel like closures,
 but generate static functions that are fast and can be compiled to web assembly.
 
+## status
+
+In development. currently I have a simple expression
+based language that successfully compiles to wasm.
+There are a bunch of hoops to jump through here.
+One thing is that in a lisp, everything should be an
+expression. But wasm isn't like that. Somethings are
+statements and can't have return values. To get around
+this, code is tranformed so that expressions
+become statements.
+
+Currently only i32 values are supported.
+
 ## syntax
 
 started with lisp, because it's easiest - both to implement and work with.

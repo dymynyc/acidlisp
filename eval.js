@@ -135,14 +135,14 @@ function ev (ast, env) {
   // should export be allowed inside if?
   // I guess you can put an def in the if and export the reference.
   if(ast[0] === syms.module) {
-    var exports = {}, single = null
+    var exports = [], single = null
     for(var i = 1; i < ast.length; i++) {
       if(isArray(ast[i]) && ast[i][0] === syms.export) {
         if(isSymbol(ast[i][1]) && ast[i].length == 3) {
           if(single === true)
             throw new Error('already exported a single symbol, cannot export multiple')
           single = false
-          exports[ast[i][1].description] = ev(ast[i][2], env)
+          exports.push([ast[i][1], ev(ast[i][2], env)])
         }
         else {
           if(single !== null)

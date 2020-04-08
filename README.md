@@ -10,10 +10,29 @@ In development. currently I have a simple expression
 based language that successfully compiles to wasm.
 There are a bunch of hoops to jump through here.
 One thing is that in a lisp, everything should be an
-expression. But wasm isn't like that. Somethings are
-statements and can't have return values. To get around
-this, code is tranformed so that expressions
+expression. That means that any piece of code evaluates
+to a value, and can be the input to another expression.
+But wasm isn't always like that. Somethings are
+statements and can't have return values. And sometimes
+it complains that there is a value somewhere that it
+wasn't expecting it.
+
+To get around this, code is tranformed so that expressions
 become statements.
+
+one example is an if statement. `(if test (then ...) ( else ...))`
+in wasm you cant do `(add 7 (if foo 5 10))` but I want to be able to!
+but we can make it work like that by transforming the statement.
+``` js
+(if foo (set $1 5) (set $1 10))
+(add 7 $1)
+```
+(note: I've left 7 in the same place for clarity.
+if it was a more complicated expression that updated
+something it's possible that the behaviour changed.
+so we'll need to move it out too. However, if all
+the are pure expressions then the call order can change
+but the behaviour will stay the same)
 
 Currently only i32 values are supported.
 

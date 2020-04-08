@@ -22,6 +22,10 @@ function isFunction (f) {
   return 'function' === typeof f
 }
 
+function isFun (f) {
+  return isArray(f) && f[0] === syms.fun
+}
+
 function isNumber(n) {
   return 'number' === typeof n
 }
@@ -69,11 +73,23 @@ exports.isNull     = isNull
 exports.isBoolean  = isBoolean
 exports.isString   = isString
 exports.isFunction = isFunction
+exports.isFun      = isFun
 exports.isNumber   = isNumber
 exports.isBasic    = isBasic
 exports.isBound    = isBound
 exports.eqSymbol   = eqSymbol
 exports.equals     = equals
+
+
+exports.stringify = function stringify (s, env) {
+  if(isArray(s) && isSymbol(s[0]) && eqSymbol(s[0], 'ref'))
+    return isFunction (s[1]) ? stringify(s[2]) : s[1]
+  if(isArray(s)) return '(' + s.map(stringify).join(' ') + ')'
+  if(isSymbol(s)) return s.description
+  if(isFunction(s)) return stringify(s.source)
+  return JSON.stringify(s)
+}
+
 
 function traverse (tree, each_branch, each_leaf) {
   if(isFunction(tree) && tree.source)
@@ -85,6 +101,7 @@ function traverse (tree, each_branch, each_leaf) {
   else if(each_leaf)
       each_leaf(tree)
 }
+exports.traverse = traverse
 
 function id (e) { return e }
 
@@ -155,57 +172,21 @@ exports.isHigherOrder = function (fun) {
   })
 }
 
-// take a tree of expanded bound functions and remap them into a topographically
-// ordered set of definitions, with lexical references.
-
-function remap (tree, funs) {
-  if(isFunction(tree)) tree = tree.source
-  return tree.map(branch => {
-    if(!isArray(branch)) return branch
-    if(eqSymbol(branch[0], 'ref') && isFunction(branch[1]) && isSymbol(branch[2])) {
-      return Symbol('f'+funs.indexOf(branch[1]))
-    }
-    else
-      return remap(branch, funs)
-  })
+function isFun(tree) {
+  return isArray(tree) && tree[0] == syms.fun
 }
 
-exports.stringify = function stringify (s, env) {
-  if(isArray(s) && isSymbol(s[0]) && eqSymbol(s[0], 'ref'))
-    return isFunction (s[1]) ? stringify(s[2]) : s[1]
-  if(isArray(s)) return '(' + s.map(stringify).join(' ') + ')'
-  if(isSymbol(s)) return s.description
-  if(isFunction(s)) return stringify(s.source)
-  return JSON.stringify(s)
+var isExpressionTree = exports.isExpressionTree = function (tree) {
+  if(!isArray(tree)) return true
+  else if(
+    tree[0] === syms.if ||
+    tree[0] === syms.loop ||
+    tree[0] === syms.block
+  ) return false
+  else
+    return tree.every(exports.isExpressionTree)
 }
 
-exports.getExports = function (tree) {
-  return tree.filter(e => isArray(e) && eqSymbol(e[0], 'export'))
-    .map(e => isDefined(e[2]) ? [e[1], e[2]] : [null, e[1]])
-}
-
-function searchFunctions(tree, funs) {
-  funs = funs || []
-  traverse(tree, function (branch) {
-    //find all bound functions referenced by a variable name.
-    if(eqSymbol(branch[0], 'ref') && isFunction(branch[1]) && isSymbol(branch[2])) {
-      var id = funs.indexOf(branch[1])
-      if(!~id) {
-        id = funs.push(branch[1])
-        searchFunctions(branch[1].source, funs)
-      }
-      return Symbol('f'+id)
-    }
-  })
-  return funs
-}
-
-exports.unroll = function unroll (tree) {
-  var funs = searchFunctions(tree, [])
-  return [syms.module]
-    .concat(funs.map((fn, i) => [syms.def, Symbol('$f'+i), remap(fn.source, funs)] ))
-    .concat([[syms.exports, remap(tree, funs)]])
-}
 
 exports.inline = function (tree) {
   var fn = tree[0]
@@ -221,19 +202,4 @@ exports.inline = function (tree) {
     else if(isArray(body)) return body.map(map)
     else return body //numbers, etc
   })(body)
-}
-
-function isFun(tree) {
-  return isArray(tree) && tree[0] == syms.fun
-}
-
-var isExpressionTree = exports.isExpressionTree = function (tree) {
-  if(!isArray(tree)) return true
-  else if(
-    tree[0] === syms.if ||
-    tree[0] === syms.loop ||
-    tree[0] === syms.block
-  ) return false
-  else
-    return tree.every(exports.isExpressionTree)
 }

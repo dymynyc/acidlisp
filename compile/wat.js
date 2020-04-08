@@ -49,10 +49,10 @@ function isFun(f) {
   return isArray(f) && eqSymbol(f[0], 'fun')
 }
 
-function getFun (f) {
+function getFun (f, message) {
   if(isFunction (f)) return f.source
   if(isFun (f)) return f
-  throw new Error('cannot find function:'+stringify(f))
+  throw new Error('cannot find function:'+stringify(f)+ ' ' + (message || ''))
 }
 
 function compile (ast, funs, isBlock) {
@@ -69,10 +69,12 @@ function compile (ast, funs, isBlock) {
     if(fn)
       return fn(ast.slice(1), funs, isBlock)
     else {
-      if(!~(fn_name = funs.indexOf(ast[0]))) 
-        throw new Error('could not index function:' + stringify(ast[0]))
 
-      return '(call '+fn_name+' ' + ast.slice(1).map(v => compile(v, funs)).join(' ')+')'
+//      if(!~(fn_name = funs.indexOf(ast[0]))) 
+//        throw new Error('could not index function:' + stringify(ast[0]))
+
+      var fn_index = /^\$f_\d+/.test(fn_name) ? fn_name.substring(3) : '$'+fn_name
+      return '(call '+fn_index+' ' + ast.slice(1).map(v => compile(v, funs)).join(' ')+')'
     }
   }
   else if(isNumber(ast))
@@ -102,22 +104,27 @@ exports = module.exports = function (ast, funs, isBlock) {
 }
 
 exports.module = function (ast) {
-  var funs = getFunctions(ast)
-  return '(module\n  (memory (export "memory") 1)\n' +
+  var funs = getFunctions(ast), ref
+  return '(module\n' +
+   //(memory (export "memory") 1)\n' +
     indent(
       funs.map(e => exports.fun(e.slice(1), funs)).join('\n') +
       ast.filter(e => eqSymbol(e[0], 'export')).map(e => {
-        if(isSymbol(e[1])) {// named export
-          var fun = getFun(e[2])
+        if(isSymbol(e[1]) && e[2]) {// named export
+          throw new Error('multiple exports not tested yet')
+          //var fun = getFun(e[2])
+          ref = e[2]
           var export_name = e[1].description
         }
         else {
-          var fun = getFun(e[1])
+          ref = e[1]
+//          var fun = getFun(e[1])
           var export_name = "main" //default export name if you only export one thing
         }
-        var name = isSymbol(fun[1]) ? $(fun[1]) : ''
+        //var name = isSymbol(ref) ? $(fun[1]) : ''
         return '(export '+ JSON.stringify(export_name) +
-          ' (func ' + (name ? name+' ' : funs.indexOf(fun)) + '))\n'
+//          ' (func ' + (name ? name+' ' : funs.indexOf(fun)) + '))\n'
+          ' (func ' + ref.description.substring(3) + '))\n'
       }).join('\n')
     ) +
   '\n)'
@@ -132,9 +139,9 @@ exports.fun = function (ast, funs) {
   return '(func '+name + args.map(e => '(param $'+e.description+' i32)').join(' ') + '(result i32)\n'+
       //TODO: extract local vars from body.
       indent(
-        defs.map(d => '(local '+$(d)+' i32)').join('\n')+'\n' +
-        compile(body[0], funs)
-      )+
+          (defs.length ? defs.map(d => '(local '+$(d)+' i32)').join('\n')+'\n' : '') +
+          compile(body[0], funs)
+        )+
     ')\n'
 }
 
@@ -158,6 +165,14 @@ exports.add = function add (args, funs) {
     return '(i32.add '+compile(args[0], funs) + ' ' + compile(args[1], funs)+')'
   return add([args[0], add(args.slice(1), funs)], funs)
 }
+
+exports.sub = function sub (args, funs) {
+  if(args.length == 1) return compile(args[0], funs)
+  if(args.length == 2)
+    return '(i32.sub '+compile(args[0], funs) + ' ' + compile(args[1], funs)+')'
+  return sub([args[0], sub(args.slice(1), funs)], funs)
+}
+
 
 exports.and = function and (args, funs) {
   if(args.length == 1) return compile(args[0], funs)

@@ -50,14 +50,14 @@ var flatten = module.exports = function flatten (tree, n) {
   n = n || 1
   if(isExpressionTree(tree)) return tree
 
-  if(tree[0] == syms.if) {
+  if(tree[0] === syms.if) {
     var sym = $(n)
     if(isExpressionTree(tree[1]))
       return [syms.block, [syms.if,
         tree[1], insertDef(tree[2], sym), insertDef(tree[3], sym)
       ], sym]
   }
-  else if(tree[0] == syms.block) {
+  else if(tree[0] === syms.block) {
     var block = [syms.block]
     for(var i = 1; i < tree.length; i++) {
       if(isExpressionTree(tree[i]))
@@ -79,7 +79,7 @@ var flatten = module.exports = function flatten (tree, n) {
     }
     return block
   }
-  else if(tree[0] == syms.loop) {
+  else if(tree[0] === syms.loop) {
     var isExpr = isExpressionTree(tree[1])
     var m = isExpr ? n : n + 1
     return [syms.block, [syms.loop,

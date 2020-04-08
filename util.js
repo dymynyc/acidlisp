@@ -80,6 +80,14 @@ exports.isBound    = isBound
 exports.eqSymbol   = eqSymbol
 exports.equals     = equals
 
+exports.toRef = function (n) { return Symbol('$f_'+n) }
+var isRef = exports.isRef = function (ref) {
+  return isSymbol(ref) && /^\$f_\d+$/.test(ref.description)
+}
+exports.fromRef = function (ref) {
+  return isRef(ref) ? +ref.description.substring(3) : ref
+}
+
 
 exports.stringify = function stringify (s, env) {
   if(isArray(s) && isSymbol(s[0]) && eqSymbol(s[0], 'ref'))

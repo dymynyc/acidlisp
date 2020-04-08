@@ -6,7 +6,8 @@ var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound,
   eqSymbol, equals, stringify, traverse,
-  isExpressionTree
+  isExpressionTree,
+  toRef, fromRef, isRef
 } = require('../util')
 
 function getDefs (ast, defs) {
@@ -56,24 +57,14 @@ function getFun (f, message) {
 }
 
 function compile (ast, funs, isBlock) {
-  //remove refs
-  if(isArray(ast) && eqSymbol(ast[0], 'ref')) {
-    if(isFunction(ast[1])) ast = ast[2]
-    else ast = ast[1]
-  }
-
   if(isArray(ast)) {
     //map strings back to
-    var fn_name = ast[0].description
-    var fn = exports[fn_name]
+    var fn_name = ast[0]
+    var fn = exports[fn_name.description]
     if(fn)
       return fn(ast.slice(1), funs, isBlock)
     else {
-
-//      if(!~(fn_name = funs.indexOf(ast[0]))) 
-//        throw new Error('could not index function:' + stringify(ast[0]))
-
-      var fn_index = /^\$f_\d+/.test(fn_name) ? fn_name.substring(3) : '$'+fn_name
+      var fn_index = isRef(fn_name) ? fromRef(fn_name) : '$'+fn_name.description
       return '(call '+fn_index+' ' + ast.slice(1).map(v => compile(v, funs)).join(' ')+')'
     }
   }
@@ -103,6 +94,12 @@ exports = module.exports = function (ast, funs, isBlock) {
   return compile(ast, funs || [])
 }
 
+function assertRef (r) {
+ if(!isRef(r))
+    throw new Error('expected function ref:'+stringify(r))
+  return r
+}
+
 exports.module = function (ast) {
   var funs = getFunctions(ast), ref
   return '(module\n' +
@@ -113,18 +110,15 @@ exports.module = function (ast) {
         if(isSymbol(e[1]) && e[2]) {// named export
           throw new Error('multiple exports not tested yet')
           //var fun = getFun(e[2])
-          ref = e[2]
+          ref = assertRef(e[2])
           var export_name = e[1].description
         }
         else {
-          ref = e[1]
-//          var fun = getFun(e[1])
+          ref = assertRef(e[1])
           var export_name = "main" //default export name if you only export one thing
         }
-        //var name = isSymbol(ref) ? $(fun[1]) : ''
         return '(export '+ JSON.stringify(export_name) +
-//          ' (func ' + (name ? name+' ' : funs.indexOf(fun)) + '))\n'
-          ' (func ' + ref.description.substring(3) + '))\n'
+          ' (func ' + fromRef(ref) + '))\n'
       }).join('\n')
     ) +
   '\n)'

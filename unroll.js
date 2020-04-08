@@ -2,7 +2,7 @@ var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound, isFun,
   eqSymbol, equals,
-  isExpressionTree, traverse
+  isExpressionTree, traverse, toRef
 } = require('./util')
 var syms = require('./symbols')
 
@@ -12,6 +12,7 @@ var syms = require('./symbols')
 
 function searchFunctions(tree, funs) {
   funs = funs || []
+  //XXX tidy
   if(isFun(tree) && !~funs.indexOf(tree)) {
     funs.push(tree)
     traverse(tree, function (branch) {
@@ -22,7 +23,6 @@ function searchFunctions(tree, funs) {
           id = funs.push(branch[0])
           searchFunctions(branch[0], funs)
         }
-  //      return Symbol('f_'+id)
       }
     })
   }
@@ -33,7 +33,7 @@ function remap (tree, funs) {
   return tree.map(branch => {
     if(!isArray(branch)) return branch
     if(isFun(branch[0])) {
-      return [Symbol('$f_'+funs.indexOf(branch[0]))].concat(branch.slice(1))
+      return [toRef(funs.indexOf(branch[0]))].concat(branch.slice(1))
     }
     else
       return remap(branch, funs)
@@ -51,8 +51,8 @@ var flatten = require('./flatten')
 
 module.exports = function unroll (exports) {
   var funs = searchFunctions(exports, [])
-  function toRef(fun) {
-    return !isFun(fun) ? fun : Symbol('$f_'+funs.indexOf(fun))
+  function createRef(fun) {
+    return !isFun(fun) ? fun : toRef(funs.indexOf(fun))
   }
 
   //flatten function bodies
@@ -60,14 +60,14 @@ module.exports = function unroll (exports) {
     fun = remap(fun, funs)
     //flatten the body
     fun[fun.length-1] = flatten(fun[fun.length-1])
-    return [syms.def, Symbol('$f_'+i), fun]
+    return [syms.def, toRef(funs.indexOf(fun)), fun]
   })
 
   return [syms.module]
     .concat(def_funs)
     .concat(
       isFun(exports)
-      ? [[syms.export, toRef(exports)]]
-      : exports.map(e => [syms.export, e[0], toRef(e[1])])
+      ? [[syms.export, createRef(exports)]]
+      : exports.map(e => [syms.export, e[0], createRef(e[1])])
     )
 }

@@ -10,6 +10,8 @@ var {
   toRef, fromRef, isRef
 } = require('../util')
 
+var syms = require('../symbols')
+
 function getDefs (ast, defs) {
   defs = defs || {}
   if(isArray(ast) && isDef(ast[0]))
@@ -25,25 +27,6 @@ function indent (src) {
 
 function $ (sym) {
   return sym.description[0] == '$' ? sym.description : '$'+sym.description
-}
-
-function getFunctions (ast) {
-  var funs = []
-
-  ;(function each (tree) {
-    if(eqSymbol(tree[0], 'fun')) {
-        funs.push(tree)
-    }
-    if(isFunction(tree)) {
-      if(!~funs.indexOf(tree)) {
-        funs.push(tree)
-        each(tree.source)
-      }
-    }
-    else if(isArray(tree))
-      tree.forEach(each)
-  })(ast)
-  return funs
 }
 
 function isFun(f) {
@@ -101,15 +84,16 @@ function assertRef (r) {
 }
 
 exports.module = function (ast) {
-  var funs = getFunctions(ast), ref
+  var funs = getFunctions(ast)
+//  var funs = null
+  var ref
   return '(module\n' +
    //(memory (export "memory") 1)\n' +
     indent(
       funs.map(e => exports.fun(e.slice(1), funs)).join('\n') +
-      ast.filter(e => eqSymbol(e[0], 'export')).map(e => {
+      ast.filter(e => e[0] === syms.export).map(e => {
         if(isSymbol(e[1]) && e[2]) {// named export
           throw new Error('multiple exports not tested yet')
-          //var fun = getFun(e[2])
           ref = assertRef(e[2])
           var export_name = e[1].description
         }

@@ -1,11 +1,13 @@
 var tape = require('tape')
 var parse = require('../parse')
 var ev = require('../eval')
+var unroll = require('../unroll')
 var compileWat = require('../compile/wat')
 var compileJs = require('../compile/js')
 var wat2wasm = require('../wat2wasm')
 var stringify = require('../util').stringify
-var flatten = require('../flatten')
+var syms = require('../symbols')
+//var flatten = require('../flatten')
 var env = {
   add: function ([a, b]) { return a + b },
   sub: function ([a, b]) { return a - b },
@@ -16,9 +18,6 @@ var inputs = [
   '1',
   '(add 1 2)',
   '(add 4 (add 3 (add 2 (add 1 0))))',
-// these require transformations... put those tests elsewhere
-//  '[(fun (a b) { add a b }) 7 13]', // could be either spun out or inlined.
-//  '[{fun fib [n] (if {lt n 2} 1 (add [fib (sub n 1)] [fib (sub n 2)]))} 5]',
   '(block (def foo 17) (add foo 2))',
   '{block (def i 0) (def sum 0) (loop [lt i 10] [def sum {add sum (def i [add i 1])}])}',
 ]
@@ -59,8 +58,7 @@ inputs.forEach(function (_, i) {
   tape('js:'+inputs[i] + ' => ' + outputs[i], function (t) {
     var ast = parse(inputs[i])
 
-//    var src = [Symbol('module'), [Symbol('export'), [Symbol('fun'), [], ast]]]
-    var src = [Symbol('module'), [Symbol('export'), [Symbol('fun'), [], ast]]]
+    var src = [syms.module, [syms.export, [syms.fun, [], ast]]]
     var js = compileJs(src)
     console.log("js", js, outputs[i])
     //eval is leaking!
@@ -76,8 +74,8 @@ inputs.forEach(function (_, i) {
   tape('wat:'+inputs[i] + ' => ' + outputs[i], function (t) {
     var ast = parse(inputs[i])
 
-    var src = [Symbol('module'), [Symbol('export'), [Symbol('fun'), [], flatten(ast)]]]
-    var wat = compileWat(src)
+    var src = [syms.module, [syms.export, [syms.fun, [], ast]]]
+    var wat = compileWat(unroll(ev(src, {})))
     console.log("WAT", wat)
     var module = wat2wasm(wat)
     t.equal(module(), outputs[i])

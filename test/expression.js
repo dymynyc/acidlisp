@@ -5,6 +5,7 @@ var {
 var flatten = require('../flatten')
 var parse = require('../parse')
 var ev = require('../eval')
+var syms = require('../symbols')
 var compileWat = require('../compile/wat')
 var wat2wasm = require('../wat2wasm')
 
@@ -81,10 +82,12 @@ inputs.forEach(function (_, i) {
     t.equal(ev(flat_ast, {__proto__: env}), values[i])
 
     //compile to webassembly and check that's the same too.
-    var wat = compileWat([Symbol('module'), [Symbol('export'), [
-      Symbol('fun'),
+    var wat = compileWat([syms.module,
+      [syms.def, Symbol('$f_0'), [syms.fun,
         Object.keys(env).filter(k => isNumber(env[k])).map(k => Symbol(k))
-      , flat_ast]]], env)
+      , flat_ast]],
+      [syms.export, Symbol('$f_0')]
+    ], env)
 
     console.log(wat)
     var wasm = wat2wasm(wat)

@@ -39,16 +39,16 @@ function getFun (f, message) {
   throw new Error('cannot find function:'+stringify(f)+ ' ' + (message || ''))
 }
 
-function compile (ast, funs, isBlock) {
+function compile (ast, isBlock) {
   if(isArray(ast)) {
-    //map strings back to
+    //first, check if it's a core method
     var fn_name = ast[0]
     var fn = exports[fn_name.description]
     if(fn)
-      return fn(ast.slice(1), funs, isBlock)
+      return fn(ast.slice(1), isBlock)
     else {
       var fn_index = isRef(fn_name) ? fromRef(fn_name) : '$'+fn_name.description
-      return '(call '+fn_index+' ' + ast.slice(1).map(v => compile(v, funs)).join(' ')+')'
+      return '(call '+fn_index+' ' + ast.slice(1).map(v => compile(v)).join(' ')+')'
     }
   }
   else if(isNumber(ast))
@@ -73,8 +73,8 @@ function getFunctions (tree, funs) {
   return funs
 }
 
-exports = module.exports = function (ast, funs, isBlock) {
-  return compile(ast, funs || [])
+exports = module.exports = function (ast, isBlock) {
+  return compile(ast)
 }
 
 function assertRef (r) {
@@ -85,17 +85,17 @@ function assertRef (r) {
 
 exports.module = function (ast) {
   var funs = getFunctions(ast)
-//  var funs = null
   var ref
   return '(module\n' +
-   //(memory (export "memory") 1)\n' +
+   '(memory (export "memory") 1)\n' +
     indent(
-      funs.map(e => exports.fun(e.slice(1), funs)).join('\n') +
+      funs.map(e => exports.fun(e.slice(1))).join('\n') +
       ast.filter(e => e[0] === syms.export).map(e => {
         if(isSymbol(e[1]) && e[2]) {// named export
-          throw new Error('multiple exports not tested yet')
           ref = assertRef(e[2])
           var export_name = e[1].description
+          return '(export '+ JSON.stringify(export_name) +
+          ' (func ' + fromRef(ref) + '))\n'
         }
         else {
           ref = assertRef(e[1])
@@ -108,7 +108,7 @@ exports.module = function (ast) {
   '\n)'
 }
 
-exports.fun = function (ast, funs) {
+exports.fun = function (ast) {
   ast = ast.slice(0)
   var defs = getDefs(ast)
   var name = isSymbol(ast[0]) ? $(ast.shift())+' ' : ''
@@ -118,63 +118,63 @@ exports.fun = function (ast, funs) {
       //TODO: extract local vars from body.
       indent(
           (defs.length ? defs.map(d => '(local '+$(d)+' i32)').join('\n')+'\n' : '') +
-          compile(body[0], funs)
+          compile(body[0])
         )+
     ')\n'
 }
 
-exports.if = function ([test, then, e_then], funs) {
+exports.if = function ([test, then, e_then]) {
   if(e_then)
     return '(if\n' + indent(
-      compile(test, funs) + '\n(then '+
-      compile(then, funs, true)+')\n(else '+
-      compile(e_then, funs, true) + '))')
+      compile(test) + '\n(then '+
+      compile(then, true)+')\n(else '+
+      compile(e_then, true) + '))')
   else
     return '(if\n' + indent(
-      compile(test, funs, true) + '\n(then '+
-      compile(then, funs, true)+'))')
-
-//args.map(e => compile(e, funs)).join('\n')) + ')\n'
+      compile(test, true) + '\n(then '+
+      compile(then, true)+'))')
 }
 
+//XXX apply steps like this in a special pass, before flattening.
+//applies to most functions and also if
 exports.add = function add (args, funs) {
-  if(args.length == 1) return compile(args[0], funs)
+  if(args.length == 1) return compile(args[0])
   if(args.length == 2)
-    return '(i32.add '+compile(args[0], funs) + ' ' + compile(args[1], funs)+')'
-  return add([args[0], add(args.slice(1), funs)], funs)
+    return '(i32.add '+compile(args[0]) + ' ' + compile(args[1])+')'
+  return add([args[0], add(args.slice(1))])
 }
 
-exports.sub = function sub (args, funs) {
-  if(args.length == 1) return compile(args[0], funs)
+exports.sub = function sub (args) {
+  if(args.length == 1) return compile(args[0])
   if(args.length == 2)
-    return '(i32.sub '+compile(args[0], funs) + ' ' + compile(args[1], funs)+')'
-  return sub([args[0], sub(args.slice(1), funs)], funs)
+    return '(i32.sub '+compile(args[0]) + ' ' + compile(args[1])+')'
+  return sub([args[0], sub(args.slice(1))])
 }
 
 
-exports.and = function and (args, funs) {
-  if(args.length == 1) return compile(args[0], funs)
+exports.and = function and (args) {
+  if(args.length == 1) return compile(args[0])
   if(args.length == 2)
-    return '(i32.and '+compile(args[0], funs) + ' ' + compile(args[1], funs)+')'
-  return and([args[0], and(args.slice(1), funs)], funs)
+    return '(i32.and '+compile(args[0]) + ' ' + compile(args[1])+')'
+  return and([args[0], and(args.slice(1))], funs)
 }
-exports.lt = function (args, funs) {
-  return '(i32.lt_s '+compile(args[0], funs) + ' ' + compile(args[1], funs)+')'
+exports.lt = function (args) {
+  return '(i32.lt_s '+compile(args[0]) + ' ' + compile(args[1])+')'
 }
 exports.block = function (args, funs, isBlock) {
-  return args.map((e,i) => compile(e, funs, true)).join('\n')
+  return args.map((e,i) => compile(e, true)).join('\n')
 }
 
-exports.def = function ([sym, value], funs, isBlock) {
-  return '(local.' +(isBlock ? 'set':'tee')+' '+$(sym)+' ' + compile(value, funs)+')'
+exports.def = function ([sym, value], isBlock) {
+  return '(local.' +(isBlock ? 'set':'tee')+' '+$(sym)+' ' + compile(value)+')'
 }
 
 exports.loop = function ([test, iter], funs) {
   //TODO: expand test incase it's got statements
   if(isExpressionTree(test))
     return '(loop (if\n'+
-      indent(compile(test, funs, false)+'\n(then\n'+
-      indent(compile(iter, funs, true))+'\n(br 1))))')
+      indent(compile(test, false)+'\n(then\n'+
+      indent(compile(iter, true))+'\n(br 1))))')
   else {
     if(!eqSymbol(test[0], 'block'))
       throw new Error('expected block:'+stringify(test))
@@ -182,10 +182,34 @@ exports.loop = function ([test, iter], funs) {
     var value = test.pop()
     return '(loop\n'+
       indent(
-        compile(test, funs, true)+'\n'+
-        '(if '+compile(value, funs, false)+
+        compile(test, true)+'\n'+
+        '(if '+compile(value, false)+
           '(then\n' +
-          indent(compile(iter, funs, false) + ' (br 1))))')
+          indent(compile(iter, false) + ' (br 1))))')
       )
   }
 }
+
+var ops = {
+  'i32.load': [1],
+  'i32.store': [2, 2]
+}
+exports.i32_load = function ([ptr]) {
+  return '(i32.load '+compile(ptr)+')'
+}
+exports.i32_store = function ([ptr, value]) {
+  return '(i32.store '+compile(ptr)+' ' + compile(value)+
+    ')\n'+compile(value)
+}
+
+////module.exports = function (compile, exports) {
+//  for(var k in ops) (function (key, arity) {
+//    exports[k.replace(/\./g, '_')] = function  (args) {
+//      if(args.length != arity)
+//        throw new Error('wasm operation:'+key+' expects '+ arity +
+//          ' arguments, got:'+args.length+', '+(stringify(args)))
+//      return '('+k+' '+args.map(compile).join(' ')+')'
+//    }
+//  })(k, ops[k])
+//
+////}

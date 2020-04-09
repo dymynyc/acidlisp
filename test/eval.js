@@ -49,7 +49,6 @@ function safe_eval(js) {
 //  with(proxy) {
 //    eval(s)
 //  }
-
   js = '(function () { var module = {exports: {}}, exports = module.exports;'+js+';return module.exports;})()'
   return eval(js)
 }
@@ -62,7 +61,7 @@ inputs.forEach(function (_, i) {
     var js = compileJs(src)
     console.log("js", js, outputs[i])
     //eval is leaking!
-    var fn = eval(js)
+    var fn = safe_eval(js)
     t.equal(fn(), outputs[i])
     t.end()
   })
@@ -76,7 +75,6 @@ inputs.forEach(function (_, i) {
 
     var src = [syms.module, [syms.export, [syms.fun, [], ast]]]
     var wat = compileWat(unroll(ev(src, {})))
-    console.log("WAT", wat)
     var module = wat2wasm(wat)
     t.equal(module(), outputs[i])
     t.end()

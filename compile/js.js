@@ -16,14 +16,6 @@ function getDefs (ast, defs) {
 function compile (ast) {
   if(isSymbol(ast)) return ast.description
 
-  //remove refs
-  if(isArray(ast) && eqSymbol(ast[0], 'ref')) {
-    if(isFunction(ast[1])) ast = ast[2]
-    else ast = ast[1]
-  }
-
-  if(isFunction(ast)) return compile(ast.source)
-
   if(isArray(ast)) {
     var fn = exports[ast[0].description]
     if(!fn) throw new Error('could not resolve compiler for:'+stringify(ast))
@@ -36,10 +28,21 @@ function compile (ast) {
 function indent (src) {
   return src.split('\n').map(line => '  ' + line).join('\n')
 }
-exports = module.exports = compile
+exports = module.exports = function (ast) {
+  return (
+    '(function () {' +
+      'var module = {exports: {}}, exports = module.exports;'+
+      compile(ast)+
+      ';return module.exports;})()'
+  )
+}
 
 exports.module = function (args) {
-  return args.map(compile).join(';\n')
+  var defs = getDefs(args[0])
+  return '(function () {\n' +
+    'var memory = Buffer.alloc(65536);\n' +
+    (defs.length ? 'var ' + defs.join(', ') + ';\n' : '') +
+    args.map(compile).join(';\n') + '})();'
 }
 
 exports.export = function (args) {
@@ -72,7 +75,6 @@ exports.fun = function (_args) {
   var args = _args.shift()
   var body = _args
   var defs = getDefs(body[0])
-  console.log("DEFS", defs)
   return ('(function '+(name?name+' ':'') + '('+args.map(compile).join(', ')+') {\n'+
     //todo: extract defs, put them first.
     (defs.length ? 'var ' + defs.join(', ') + ';\n' : '') +
@@ -84,4 +86,11 @@ exports.loop = function ([test, body]) {
   return '(function () {'+
     'var result = null; while('+compile(test)+'){result ='+compile(body)+'} return result;\n'+
   '})()'
+}
+
+exports.i32_store = function ([ptr, value]) {
+  return '(memory.writeInt32LE(value, ptr), value)'
+}
+exports.i32_load = function ([ptr]) {
+  return 'memory.writeInt32LE(value, ptr)'
 }

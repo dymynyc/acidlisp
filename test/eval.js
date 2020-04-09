@@ -7,6 +7,9 @@ var compileJs = require('../compile/js')
 var wat2wasm = require('../wat2wasm')
 var stringify = require('../util').stringify
 var syms = require('../symbols')
+
+var l6 = require('../')
+
 //var flatten = require('../flatten')
 var env = {
   add: function ([a, b]) { return a + b },
@@ -30,6 +33,11 @@ var outputs = [
   55
 ]
 
+function toModule (src) {
+  return stringify([syms.module, [syms.export, [syms.fun, [], parse(src)]]])
+}
+
+
 inputs.forEach(function (_, i) {
   tape(inputs[i] + ' => ' + outputs[i], function (t) {
     var ast = parse(inputs[i])
@@ -39,44 +47,16 @@ inputs.forEach(function (_, i) {
   })
 })
 
-function safe_eval(js) {
-//  var proxy = new Proxy({
-//    has: function (prop) {
-//      console.log('access?', prop)
-//      return false
-//    }
-//  })
-//  with(proxy) {
-//    eval(s)
-//  }
-  js = '(function () { var module = {exports: {}}, exports = module.exports;'+js+';return module.exports;})()'
-  return eval(js)
-}
-
 inputs.forEach(function (_, i) {
   tape('js:'+inputs[i] + ' => ' + outputs[i], function (t) {
-    var ast = parse(inputs[i])
-
-    var src = [syms.module, [syms.export, [syms.fun, [], ast]]]
-    var js = compileJs(src)
-    console.log("js", js, outputs[i])
-    //eval is leaking!
-    var fn = safe_eval(js)
-    t.equal(fn(), outputs[i])
+    t.equal(l6.js_eval(toModule(inputs[i]))(), outputs[i])
     t.end()
   })
 })
 
-
-
 inputs.forEach(function (_, i) {
   tape('wat:'+inputs[i] + ' => ' + outputs[i], function (t) {
-    var ast = parse(inputs[i])
-
-    var src = [syms.module, [syms.export, [syms.fun, [], ast]]]
-    var wat = compileWat(unroll(ev(src, {})))
-    var module = wat2wasm(wat)
-    t.equal(module(), outputs[i])
+    t.equal(l6.wasm(toModule(inputs[i]))(), outputs[i])
     t.end()
   })
 })

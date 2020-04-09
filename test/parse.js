@@ -10,7 +10,8 @@ var valid = [
   'foo : bar',
   '(foo bar) : baz',
   '(&foo bar)',
-  'foo.bar.baz'
+  'foo.bar.baz',
+  '(foo bar ;;comment \n baz)'
 ]
 
 var invalid = [

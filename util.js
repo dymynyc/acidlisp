@@ -80,22 +80,27 @@ exports.isBound    = isBound
 exports.eqSymbol   = eqSymbol
 exports.equals     = equals
 
-exports.toRef = function (n) { return Symbol('$f_'+n) }
-var isRef = exports.isRef = function (ref) {
-  return isSymbol(ref) && /^\$f_\d+$/.test(ref.description)
-}
-exports.fromRef = function (ref) {
-  return isRef(ref) ? +ref.description.substring(3) : ref
-}
-
-
-exports.stringify = function stringify (s, env) {
+function stringify (s, env) {
   if(isArray(s) && isSymbol(s[0]) && eqSymbol(s[0], 'ref'))
     return isFunction (s[1]) ? stringify(s[2]) : s[1]
   if(isArray(s)) return '(' + s.map(stringify).join(' ') + ')'
   if(isSymbol(s)) return s.description
   if(isFunction(s)) return stringify(s.source)
   return JSON.stringify(s)
+}
+
+exports.stringify = stringify
+
+
+exports.toRef = function (n, fun) {
+  if(!~n) throw new Error('missing reference, for:'+stringify(fun))
+  return Symbol('$f_'+n)
+}
+var isRef = exports.isRef = function (ref) {
+  return isSymbol(ref) && /^\$f_\d+$/.test(ref.description)
+}
+exports.fromRef = function (ref) {
+  return isRef(ref) ? +ref.description.substring(3) : ref
 }
 
 
@@ -181,7 +186,7 @@ exports.isHigherOrder = function (fun) {
 }
 
 function isFun(tree) {
-  return isArray(tree) && tree[0] == syms.fun
+  return isArray(tree) && tree[0] === syms.fun
 }
 
 var isExpressionTree = exports.isExpressionTree = function (tree) {

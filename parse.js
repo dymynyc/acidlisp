@@ -1,10 +1,10 @@
 var {AND,OR,MAYBE,MORE,JOIN,RECURSE,GROUP,TEXT,EMPTY}  = require('stack-expression')
 
-//mandatory whitespace
-var __ = /^\s+/
+//mandatory whitespace (includes ;; comments)
+var __ = /^(?:(?:\s)|(?:;;[^\n]*))+/
 
-//optional whitespace
-var _ = /^\s*/
+//optional whitespace (includes ;; comments)
+var _ = /^(?:(?:\s)|(?:;;[^\n]*))*/
 
 var value = RECURSE ()
 
@@ -12,6 +12,7 @@ var symbols = require('./symbols')
 //note: json's value types already capture.
 var {string, number, boolean} = require('stack-expression/examples/json')
 var sym = TEXT(/^[a-zA-Z;_][a-zA-Z0-9_]*/, function (text) { return symbols[text] || Symbol(text) })
+
 
 var nil = TEXT(/^nil/, function () { return null })
 var contents = GROUP(MAYBE(JOIN(value, __)))

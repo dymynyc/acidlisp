@@ -8,7 +8,7 @@ function load(file) {
   if(instance.exports.main)
     return instance.exports.main
   else
-    returninstance.exports
+    return instance.exports
 }
 module.exports = function (src, cb) {
   var ts = Date.now()

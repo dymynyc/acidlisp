@@ -1,0 +1,4 @@
+(module
+  (def foo (import "foo"))
+  (export foofoo (fun () (foo) )) ;; returns 27
+)

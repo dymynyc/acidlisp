@@ -1,12 +1,6 @@
 var tape = require('tape')
-var parse = require('../parse')
-var ev = require('../eval')
-var compileWat = require('../compile/wat')
-var compileJs = require('../compile/js')
-var wat2wasm = require('../wat2wasm')
 var {stringify} = require('../util')
-var flatten = require('../flatten')
-var unroll = require('../unroll')
+var l6 = require('../')
 
 var env = {}
 
@@ -18,7 +12,7 @@ var inputs = [
 
   //could expand this by either binding it, or by unrolling
 ` (module (export {fun (x y)
-    [(fun (a b) { add a b }) (add x 7) (add y 13)]}))`, // could be either spun out or inlined.
+    [(fun (a b) {add a b}) (add x 7) (add y 13)]}))`, // could be either spun out or inlined.
 
   //self-evaluating recursive function must be unrolled.
 ` (module (export {fun (x)
@@ -31,33 +25,28 @@ var inputs = [
 ]
 
 var outputs = [
-  [[[0],7], [[1], 8], [[7], 14]],
-  [[[],20], [[1, 2], 23]],
-  [[[5], 8], [[6], 13], [[8], 34]],
+  [[[0],7], [[1], 8], [[7], 14] ],
+  [[[],20], [[1, 2], 23] ],
+  [[[5], 8], [[6], 13], [[8], 34], [[20], 10946], [[35], 14930352] ],
 ]
 
-inputs.forEach(function (v, i) {
-  tape('compile functions:'+inputs[i], function (t) {
-    console.log('input:'+i)
-    var start = Date.now()
-    var src = parse(inputs[i])
-    console.log(Date.now()-start)
-    console.log('SRC', src)
-    var ast = ev(src, env)
-
-    console.log('AST', ast)
-
-    var unrolled = unroll(ast)
-    console.log('unrolled', stringify(unrolled))
-
-    var wat = compileWat(unrolled)
-    console.log("WAT", wat)
-    var wasm = wat2wasm(wat)
+function makeTest(name, i, compiler) {
+  tape(name+', compile functions:'+inputs[i], function (t) {
+    //console.log('input', i, inputs[i])
+    var module = compiler(inputs[i])
     for(var j = 0; j < outputs[i].length; j ++) {
       var args = outputs[i][j][0]
       var expected = outputs[i][j][1]
-      t.equal(wasm.apply(null, args), expected)
+      var start = Date.now()
+      var actual = module.apply(null, args)
+      console.log(Date.now() - start)
+      t.equal(actual, expected)
     }
     t.end()
   })
+
+}
+inputs.forEach(function (v, i) {
+  makeTest('js', i, l6.js_eval)
+  makeTest('wasm', i, l6.wasm)
 })

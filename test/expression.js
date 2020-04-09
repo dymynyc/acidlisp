@@ -9,6 +9,8 @@ var syms = require('../symbols')
 var compileWat = require('../compile/wat')
 var wat2wasm = require('../wat2wasm')
 
+var l6 = require('../')
+
 var env = {
   a: 7, b: 0, d: 0, e: 0, f: 1,
   and: ([a]) => a & 1,
@@ -49,7 +51,7 @@ var outputs = [
  '(block (def i 1) (loop (block (if (lt i 50) (def $1 1) (def $1 0)) $1) (def $2 (def i (add i i)))) $2)'
 ]
 
-var values = [
+var expected = [
   3,
   1,
   8,
@@ -59,6 +61,11 @@ var values = [
   128,
   64
 ]
+
+var keys = Object.keys(env).filter(e => isNumber(env[e]))
+var values = keys.map(k => env[k])
+//return console.log(keys, values, env)
+
 
 tape('is expression tree', function (t) {
   inputs.forEach(function (tree, i) {
@@ -78,22 +85,40 @@ inputs.forEach(function (_, i) {
     t.equal(stringify(flat_ast), outputs[i])
 
     //assert that the evaluation result is the same
-    t.equal(ev(ast, {__proto__: env}), values[i])
-    t.equal(ev(flat_ast, {__proto__: env}), values[i])
+    t.equal(ev(ast, {__proto__: env}), expected[i])
+    t.equal(ev(flat_ast, {__proto__: env}), expected[i])
 
-    //compile to webassembly and check that's the same too.
-    var wat = compileWat([syms.module,
-      [syms.def, Symbol('$f_0'), [syms.fun,
-        Object.keys(env).filter(k => isNumber(env[k])).map(k => Symbol(k))
-      , flat_ast]],
-      [syms.export, Symbol('$f_0')]
-    ], env)
+    t.end()
+  })
+})
 
-    console.log(wat)
-    var wasm = wat2wasm(wat)
-    t.equal(wasm.apply(wasm,
-      Object.keys(env).filter(k => isNumber(env[k])).map(k => env[k])
-    ), values[i])
+
+
+function toModule (src) {
+  return stringify([syms.module, [syms.export, [syms.fun,
+    keys.map(e => Symbol(e)), parse(src)]]])
+}
+
+inputs.forEach(function (_, i) {
+  tape(inputs[i] + ' => ' + expected[i], function (t) {
+    var ast = parse(inputs[i])
+    t.ok(ast, 'can parse')
+    t.equal(ev(ast, env), expected[i])
+    t.end()
+  })
+})
+
+
+inputs.forEach(function (_, i) {
+  tape('js:'+inputs[i] + ' => ' + expected[i], function (t) {
+    t.equal(l6.js_eval(toModule(inputs[i])).apply(null, values), expected[i])
+    t.end()
+  })
+})
+
+inputs.forEach(function (_, i) {
+  tape('wat:'+inputs[i] + ' => ' + expected[i], function (t) {
+    t.equal(l6.wasm(toModule(inputs[i])).apply(null, values), expected[i])
     t.end()
   })
 })

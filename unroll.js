@@ -15,17 +15,16 @@ function searchFunctions(tree, funs) {
   //XXX tidy
   if(isFun(tree) && !~funs.indexOf(tree)) {
     funs.push(tree)
+    searchFunctions(isSymbol(tree[1]) ? tree[3] : tree[2], funs)
+
+  }
+  else
     traverse(tree, function (branch) {
       //find all bound functions referenced by a variable name.
-      if(isFun(branch[0]) /*&& isFullyBound(branch[1])*/) {
-        var id = funs.indexOf(branch[0])
-        if(!~id) {
-          id = funs.push(branch[0])
-          searchFunctions(branch[0], funs)
-        }
-      }
+      branch.forEach(branch => {
+        searchFunctions(branch, funs)
+      })
     })
-  }
   return funs
 }
 
@@ -57,10 +56,9 @@ module.exports = function unroll (exports) {
 
   //flatten function bodies
   var def_funs = funs.map(function (fun, i) {
-    fun = remap(fun, funs)
-    //flatten the body
-    fun[fun.length-1] = flatten(fun[fun.length-1])
-    return [syms.def, toRef(funs.indexOf(fun)), fun]
+    fun = remap(fun, funs) //replace inlined functions with references.
+    fun[fun.length-1] = flatten(fun[fun.length-1]) //flatten the body
+    return [syms.def, toRef(i, fun), fun]
   })
 
   return [syms.module]

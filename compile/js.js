@@ -46,8 +46,8 @@ exports.module = function (args) {
 }
 
 exports.export = function (args) {
-  if(eqSymbol(args[0], 'def'))
-    return '(exports.['+JSON.stringify(args[1].description)+'] = '+compile(args[1]) +')'
+  if(isSymbol(args[0]) && args[1])
+    return '(exports['+JSON.stringify(args[0].description)+'] = '+compile(args[1]) +')'
   else //export without a name
     return '(module.exports = '+compile(args[0])+')'
 }
@@ -89,8 +89,8 @@ exports.loop = function ([test, body]) {
 }
 
 exports.i32_store = function ([ptr, value]) {
-  return '(memory.writeInt32LE(value, ptr), value)'
+  return '(memory.writeInt32LE('+compile(value)+', '+compile(ptr)+'),' + compile(value)+')'
 }
 exports.i32_load = function ([ptr]) {
-  return 'memory.writeInt32LE(value, ptr)'
+  return 'memory.readInt32LE('+compile(ptr)+')'
 }

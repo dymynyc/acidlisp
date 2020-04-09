@@ -26,7 +26,7 @@ var inputs = [
 
 var outputs = [
   [[[0],7], [[1], 8], [[7], 14] ],
-  [[[],20], [[1, 2], 23] ],
+  [[[0, 0],20], [[1, 2], 23] ],
   [[[5], 8], [[6], 13], [[8], 34], [[20], 10946], [[35], 14930352] ],
 ]
 
@@ -44,7 +44,6 @@ function makeTest(name, i, compiler) {
     }
     t.end()
   })
-
 }
 inputs.forEach(function (v, i) {
   makeTest('js', i, l6.js_eval)

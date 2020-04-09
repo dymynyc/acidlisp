@@ -198,8 +198,7 @@ exports.i32_load = function ([ptr]) {
   return '(i32.load '+compile(ptr)+')'
 }
 exports.i32_store = function ([ptr, value]) {
-  return '(i32.store '+compile(ptr)+' ' + compile(value)+
-    ')\n'+compile(value)
+  return '(i32.store '+compile(ptr)+' ' + compile(value)+')'
 }
 
 ////module.exports = function (compile, exports) {

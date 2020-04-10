@@ -6,15 +6,12 @@ var {
 var syms = require('./symbols')
 
 function lookup (key, env) {
+  if(isArray(env))
+    for(var i = env.length-1; i >= 0; i--)
+      if(env[i][0].description === key.description) return env[i][1]
+
   return env[key.description]
 }
-
-//function map_args (name, args, argv, _env) {
-//  var env = {__proto__: env }
-//  if(name) env[name.description] = fun
-//  args.forEach((k, i) => _env[k.description] = argv[i])
-//
-//}
 
 var core = {
   if: true, fun: true, def: true, loop: true, block: true
@@ -22,11 +19,25 @@ var core = {
 
 function bind(ast, env) {
   var value
-  if(isSymbol(ast) && isDefined(value = lookup(ast, env)))
-    return value
+
+  if(isSymbol(ast) && isDefined(value = lookup(ast, env))) {
+    if(isFunction(value))
+      return ast
+    else
+      return value
+  }
   else if(isBasic(ast)) return ast
   else if(isArray(ast) && ast[0] === syms.fun)
     return ast
+  else if(isArray(ast) && ast[0] === syms.get) {
+    if(ast.length == 1) throw new Error('cannot eval get, no arguments:'+stringify(ast))
+    var value = env
+    for(var i = 1; i < ast.length; i++) {
+      value = lookup(ast[i], value)
+    }
+    if(!isDefined(value)) throw new Error('could not resolve:'+stringify(ast))
+    return value
+  }
   else if(isArray(ast)) {
     if(core[ast[0].description])
       return [ast[0]].concat(ast.slice(1).map(e => bind(e, env)))
@@ -48,21 +59,25 @@ function call (fun, argv, env) {
     name = null, args = fun[1], body = fun[2]
 
   var _env = {__proto__: env }
+  if(argv.length < args.length)
+    throw new Error('too few arguments, expected:'+args.length+' got:'+argv.length)
   args.forEach((k, i) => _env[k.description] = ev(argv[i], env))
   if(name) _env[name.description] = fun
   return ev(body, _env)
 }
 
+
 function ev (ast, env) {
   var value
+  if('undefined' === typeof ast) throw new Error('ast cannot be undefined')
   if(isBasic(ast))
     return ast
-  if(isSymbol(ast))
+  if(isSymbol(ast)) {
     if(isDefined(value = lookup(ast, env)))
       return value
     else
       throw new Error('undefined symbol:'+ast.description)
-
+  }
   if(ast[0] === syms.def)
     return env[ast[1].description] = ev(ast[2], env)
 
@@ -83,6 +98,7 @@ function ev (ast, env) {
       return value
     }
 
+
   if(ast[0] === syms.fun) {
     var name, args, body
     if(isSymbol(ast[1]))
@@ -94,34 +110,10 @@ function ev (ast, env) {
     //2. any function calls where the arguments are bound can be transparently replaced with return values.
     //3. a closure with free variables that cannot be bound needs to be inlined into functions it's passed to.
 
-    //prehaps a better approach is to have separate variables and constants?
-    //constants can't be re assigned, vars can. so constants can be inlined.
-    //and make arguments be constants by default. can always assign a var to that value.
-
-    /*
-      return function (offset) {
-        map(array, function (item) { offset+item })
-      }
-    */
-
-    //I want a language where everything is an expression
-    //but have to compile to wasm where if and loops are statements.
-    /*
-        if <loop> then <a> else <b>
-
-      becomes:
-
-        <loop (sets value1)>
-        if(value) then <sets value2> else <sets value2>
-
-      if(foo) then value = bar else value = baz
-      if(value) qux
-    */
-    if(isSymbol(ast[1]))
-      return [syms.fun, ast[1], ast[2], bind(ast[3], env)]
+    if(isSymbol(name))
+      return [syms.fun, name, args, bind(body, env)]
     else {
-      var _ast = bind(ast[2], env)
-      return [syms.fun, ast[1], _ast]
+      return [syms.fun, args, bind(body, env)]
     }
   }
 
@@ -161,7 +153,7 @@ function ev (ast, env) {
   if(isSymbol(ast[0]) && isFun(value = lookup(ast[0], env)))
     return call(value, ast.slice(1), env)
 
-  //built in functions
+  //js functions passed in as env.
   if(isSymbol(ast[0]) && isFunction(value = lookup(ast[0], env)))
     return value(ast.slice(1).map(e => ev(e, env)))
 

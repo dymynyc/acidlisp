@@ -6,18 +6,24 @@ var wat2wasm = require('./wat2wasm')
 var js       = require('./compile/js')
 var {stringify} = require('./util')
 
-exports.js_eval = function (src) {
-  return eval(exports.js(src))
+
+exports.eval = function (src, env) {
+  console.log(stringify(parse(src)))
+  return ev(parse(src), env || {})
 }
 
-exports.js = function (src) {
-  return js(unroll(ev(parse(src), {})))
+exports.js_eval = function (src, env) {
+  return eval(exports.js(src, env))
 }
 
-exports.wat = function (src) {
-  return wat(unroll(ev(parse(src), {})))
+exports.js = function (src, env) {
+  return js(unroll(ev(parse(src), env || {})))
 }
 
-exports.wasm = function (src) {
-  return wat2wasm(exports.wat(src))
+exports.wat = function (src, env) {
+  return wat(unroll(ev(parse(src), env ||{})))
+}
+
+exports.wasm = function (src, env) {
+  return wat2wasm(exports.wat(src, env))
 }

@@ -1,27 +1,27 @@
-var parse    = require('./parse')
-var ev       = require('./eval')
-var unroll   = require('./unroll')
-var wat      = require('./compile/wat')
-var wat2wasm = require('./wat2wasm')
-var js       = require('./compile/js')
-var {stringify} = require('./util')
+var parse      = require('./parse')
+var ev         = require('./eval')
+var unroll     = require('./unroll')
+var wat        = require('./compile/wat')
+var wat2wasm   = require('./wat2wasm')
+var js         = require('./compile/js')
+var {isString} = require('./util')
 
 
-exports.eval = function (src, env) {
-  console.log(stringify(parse(src)))
-  return ev(parse(src), env || {})
+function evalIf(src, env) {
+  return isString(src) ? ev(parse(src), env) : src
 }
+exports.eval = evalIf
 
 exports.js_eval = function (src, env) {
   return eval(exports.js(src, env))
 }
 
 exports.js = function (src, env) {
-  return js(unroll(ev(parse(src), env || {})))
+  return js(unroll(evalIf(src, env)))
 }
 
 exports.wat = function (src, env) {
-  return wat(unroll(ev(parse(src), env ||{})))
+  return wat(unroll(evalIf(src, env)))
 }
 
 exports.wasm = function (src, env) {

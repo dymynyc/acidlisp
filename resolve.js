@@ -33,8 +33,13 @@ module.exports = function (MODULES, EXT, PARSE, PKG) {
     if(path.isAbsolute(name))
       throw Error('importing absolute names is not allowed')
     var norm = path.normalize(name)
-    if(/^\.\//.test(name) ? name != './'+norm : name != norm) {
-      throw new Error('importing non-canonical names are not allowed, use:'+path.normalize(name)+' instead')
+    //keep relative link 
+    function isLocalDir(f) {
+      return /^\.\/+/.test(f)
+    }
+    if(isLocalDir(name) && !isLocalDir(norm)) norm = './'+norm
+    if(name != norm) {
+      throw new Error('importing non-canonical names are not allowed, use:'+path.normalize(name)+' instead of:'+name)
     }
 
     var basedir = dirname
@@ -54,7 +59,7 @@ module.exports = function (MODULES, EXT, PARSE, PKG) {
       if(basedir_warn) {
         basedir_warn = true
         console.error(
-          'Security Warning: missing package.json,' +
+          'Security Warning: missing '+PKG+' file,' +
           'could import modules from anywhere')
       }
     }
@@ -87,5 +92,4 @@ module.exports = function (MODULES, EXT, PARSE, PKG) {
   }
 
   return resolve
-
 }

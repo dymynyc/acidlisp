@@ -15,6 +15,7 @@
   "scripts": {
     "test": "tape test/*.js"
   },
+  "bin":"./load.js",
   "author": "Dominic Tarr @EMovhfIrFk4NihAKnRNhrfRaqIhBv1Wj8pTxJNgvCCY=.ed25519",
   "license": "MIT"
 }

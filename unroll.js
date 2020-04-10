@@ -6,17 +6,14 @@ var {
 } = require('./util')
 var syms = require('./symbols')
 
-
 // take a tree of expanded bound functions and remap them into a topographically
 // ordered set of definitions, with lexical references.
 
 function searchFunctions(tree, funs) {
   funs = funs || []
-  //XXX tidy
   if(isFun(tree) && !~funs.indexOf(tree)) {
     funs.push(tree)
     searchFunctions(isSymbol(tree[1]) ? tree[3] : tree[2], funs)
-
   }
   else
     traverse(tree, function (branch) {

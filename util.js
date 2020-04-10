@@ -91,7 +91,6 @@ function stringify (s, env) {
 
 exports.stringify = stringify
 
-
 exports.toRef = function (n, fun) {
   if(!~n) throw new Error('missing reference, for:'+stringify(fun))
   return Symbol('$f_'+n)

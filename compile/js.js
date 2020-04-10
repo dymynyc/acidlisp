@@ -72,18 +72,6 @@ exports.def = function ([key, value]) {
   return '(' + key.description +' = ' + compile(value) + ')'
 }
 
-exports.add = function (args) {
-  return '(' + args.map(compile).join(' + ')+')'
-}
-exports.sub = function (args) {
-  return '(' + args.map(compile).join(' - ')+')'
-}
-exports.and = function (args) {
-  return '(' + args.map(compile).join(' & ')+')'
-}
-exports.lt = function ([a, b]) {
-  return '(' + compile(a) + ' < ' + compile(b) +')'
-}
 exports.fun = function (_args) {
   _args = _args.slice(0)
   var name = isSymbol(_args[0]) ? _args.shift() : null
@@ -108,4 +96,26 @@ exports.i32_store = function ([ptr, value]) {
 }
 exports.i32_load = function ([ptr]) {
   return 'memory.readInt32LE('+compile(ptr)+')'
+}
+
+exports.add = function (args) {
+  return '(' + args.map(compile).join(' + ')+')'
+}
+exports.sub = function (args) {
+  return '(' + args.map(compile).join(' - ')+')'
+}
+exports.mul = function (args) {
+  return '(' + args.map(compile).join(' * ')+')'
+}
+exports.div = function (args) {
+  return '(' + args.map(compile).join(' / ')+')'
+}
+exports.and = function (args) {
+  return '(' + args.map(compile).join(' & ')+')'
+}
+exports.or = function (args) {
+  return '(' + args.map(compile).join(' | ')+')'
+}
+exports.lt = function ([a, b]) {
+  return '(' + compile(a) + ' < ' + compile(b) +')'
 }

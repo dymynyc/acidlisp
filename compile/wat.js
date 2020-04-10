@@ -151,6 +151,18 @@ exports.sub = function sub (args) {
   return sub([args[0], sub(args.slice(1))])
 }
 
+exports.mul = function mul (args, funs) {
+  if(args.length == 1) return compile(args[0])
+  if(args.length == 2)
+    return '(i32.mul '+compile(args[0]) + ' ' + compile(args[1])+')'
+  return mul([args[0], mul(args.slice(1))])
+}
+exports.div = function div (args, funs) {
+  if(args.length == 1) return compile(args[0])
+  if(args.length == 2)
+    return '(i32.div_s '+compile(args[0]) + ' ' + compile(args[1])+')'
+  return div([args[0], div(args.slice(1))])
+}
 
 exports.and = function and (args) {
   if(args.length == 1) return compile(args[0])

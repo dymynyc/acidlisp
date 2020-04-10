@@ -50,7 +50,7 @@ exports.if = function ([test, then, else_then]) {
 }
 
 exports.module = function (args) {
-  var defs = getDefs(args[0])
+  var defs = getDefs(args)
   return '(function () {\n' +
     'var memory = Buffer.alloc(65536);\n' +
     (defs.length ? 'var ' + defs.join(', ') + ';\n' : '') +

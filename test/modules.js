@@ -4,8 +4,8 @@ var l6 = require('../')
 var fs = require('fs')
 var wrap = require('../wrap')
 var env = require('../env')
-var unroll = require('../unroll')
-var compileJS = require('../compile/js')
+//var unroll = require('../unroll')
+//var compileJS = require('../compile/js')
 
 var resolve = require('../resolve')(
   'node_modules', '.l6', JSON.parse, 'package.json'
@@ -66,13 +66,17 @@ tape('actually import stuff', function (t) {
   var _import = createImport(path.join(__dirname, 'examples'))
 
   var raw = _import('./')
+
+  function testWrapped(s, name) {
+    console.log(name)
+    t.equal(s.foofoo(), 27)
+    t.equal(s.barbar(3), 9)
+    t.equal(s.barbaz(3, 5), 15)
+  }
   var s = wrap(raw, env)
-
-  t.equal(s.foofoo(), 27)
-  t.equal(s.barbar(3), 9)
-  t.equal(s.barbaz(3, 5), 15)
-
-  console.log(compileJS(unroll(raw)))
+  testWrapped(s, 'interpreter')
+  testWrapped(l6.js_eval(raw), 'javascript')
+  testWrapped(l6.wasm(raw), 'webassembly')
 
   t.end()
 })

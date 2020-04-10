@@ -1,6 +1,7 @@
 var {
   isDefined, isSymbol, isArray, isNull, isBoolean, isString,
-  isDef, isEmpty, isFunction, isNumber, isBound, isBasic,
+  isEmpty, isFunction, isNumber, isBound, isBasic,
+  isDef, isMac, isFun,
   eqSymbol, equals, stringify
 } = require('./util')
 var syms = require('./symbols')
@@ -29,6 +30,10 @@ function bind(ast, env) {
   else if(isBasic(ast)) return ast
   else if(isArray(ast) && ast[0] === syms.fun)
     return ast
+//  else if(isArray(ast) && ast[0] === syms.mac) {
+//    //var {name, args, body} = parseFun(ast)
+//    call(ast, 
+//  }
   else if(isArray(ast) && ast[0] === syms.get) {
     if(ast.length == 1) throw new Error('cannot eval get, no arguments:'+stringify(ast))
     var value = env
@@ -39,17 +44,19 @@ function bind(ast, env) {
     return value
   }
   else if(isArray(ast)) {
-    if(core[ast[0].description])
-      return [ast[0]].concat(ast.slice(1).map(e => bind(e, env)))
+    var mac
+    if(isSymbol(ast[0]) && core[ast[0].description])
+        return [ast[0]].concat(ast.slice(1).map(e => bind(e, env)))
+    else if(isMac(mac = ast[0]) || isMac(mac = isSymbol(ast[0]) && lookup(ast[0], env))) {
+      console.error('eval mac', ast)
+      //will probably return a quote which is then bound.
+      return call(mac, ast.slice(1), env)
+    }
     else
       return ast.map(e => bind(e, env))
   }
   else
     return ast
-}
-
-function isFun(ast) {
-  return isArray(ast) && ast[0] === syms.fun
 }
 
 function call (fun, argv, env) {
@@ -61,7 +68,11 @@ function call (fun, argv, env) {
   var _env = {__proto__: env }
   if(argv.length < args.length)
     throw new Error('too few arguments, expected:'+args.length+' got:'+argv.length)
-  args.forEach((k, i) => _env[k.description] = ev(argv[i], env))
+
+  //note: if it's a macro, don't eval arguments
+  args.forEach((k, i) =>
+    _env[k.description] = isMac(fun) ? argv[i] : ev(argv[i], env))
+
   if(name) _env[name.description] = fun
   return ev(body, _env)
 }
@@ -99,6 +110,7 @@ function ev (ast, env) {
     }
 
 
+  //define function, not call it.
   if(ast[0] === syms.fun) {
     var name, args, body
     if(isSymbol(ast[1]))
@@ -110,11 +122,20 @@ function ev (ast, env) {
     //2. any function calls where the arguments are bound can be transparently replaced with return values.
     //3. a closure with free variables that cannot be bound needs to be inlined into functions it's passed to.
 
+    //XXX assemble env so that function arguments are not replaced.
+
     if(isSymbol(name))
       return [syms.fun, name, args, bind(body, env)]
     else {
       return [syms.fun, args, bind(body, env)]
     }
+  }
+
+  //this happens if we are _defining_ a macro
+  //should we bind it?
+  if(ast[0] === syms.mac) {
+    return ast
+    //throw new Error('encountered macro in eval context')
   }
 
   if(ast[0] === syms.block) {
@@ -149,6 +170,12 @@ function ev (ast, env) {
     return exports
   }
 
+  if(ast[0] === syms.quote) {
+    //bind will replace known symbols in the output.
+    //XXX maybe this isn't what you want?
+    return bind(ast[1], env)
+  }
+
   //user defined functions
   if(isSymbol(ast[0]) && isFun(value = lookup(ast[0], env)))
     return call(value, ast.slice(1), env)
@@ -167,3 +194,5 @@ function ev (ast, env) {
 }
 
 exports = module.exports = ev
+
+exports.bind = bind

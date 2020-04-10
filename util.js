@@ -26,6 +26,10 @@ function isFun (f) {
   return isArray(f) && f[0] === syms.fun
 }
 
+function isMac (m) {
+  return isArray(m) && m[0] === syms.mac
+}
+
 function isNumber(n) {
   return 'number' === typeof n
 }
@@ -74,6 +78,7 @@ exports.isBoolean  = isBoolean
 exports.isString   = isString
 exports.isFunction = isFunction
 exports.isFun      = isFun
+exports.isMac      = isMac
 exports.isNumber   = isNumber
 exports.isBasic    = isBasic
 exports.isBound    = isBound

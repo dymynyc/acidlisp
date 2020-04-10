@@ -4,6 +4,26 @@ playing around with the idea of a macro based language.
 I want it to feel like closures,
 but generate static functions that are fast and can be compiled to web assembly.
 
+## usage
+
+you'll need to install the `wabt` tools.
+```
+git clone https://github.com/dominictarr/l6
+cd l6
+./load.js path_to_l6_file > out.wat
+wat2wasm out.wat #wat2wasm from wabt (web assembly binary tools)
+```
+
+## modules
+
+l6 has a module system inspired by node.js's. This is in my opinion
+a most underrated module system, mainly because it avoids the problem
+of version conflicts - you can simply have more than one version of
+the same thing! yes, this can make a larger output, but, that's
+something you can fix when you have time. With version conflicts
+there is a very strong disincentive to making breaking changes,
+which means you get stuck with bad ideas longer.
+
 ## status
 
 In development. currently I have a simple expression

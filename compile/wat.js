@@ -26,6 +26,7 @@ function indent (src) {
 }
 
 function $ (sym) {
+  if(!isSymbol(sym)) throw new Error('expected Symbol, got:'+sym)
   return sym.description[0] == '$' ? sym.description : '$'+sym.description
 }
 

@@ -5,10 +5,10 @@ var wat        = require('./compile/wat')
 var wat2wasm   = require('./wat2wasm')
 var js         = require('./compile/js')
 var {isString} = require('./util')
+var env        = require('./env')
 
-
-function evalIf(src, env) {
-  return isString(src) ? ev(parse(src), env) : src
+function evalIf(src, _env) {
+  return isString(src) ? ev(parse(src), _env || env) : src
 }
 exports.eval = evalIf
 

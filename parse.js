@@ -8,11 +8,10 @@ var _ = /^(?:(?:\s)|(?:;;[^\n]*))*/
 
 var value = RECURSE ()
 
-var symbols = require('./symbols')
+var syms = require('./symbols')
 //note: json's value types already capture.
 var {string, number, boolean} = require('stack-expression/examples/json')
-var sym = TEXT(/^[a-zA-Z;_][a-zA-Z0-9_]*/, function (text) { return symbols[text] || Symbol(text) })
-
+var sym = TEXT(/^[a-zA-Z;_][a-zA-Z0-9_]*/, function (text) { return syms[text] || Symbol(text) })
 
 var nil = TEXT(/^nil/, function () { return null })
 var contents = GROUP(MAYBE(JOIN(value, __)))
@@ -21,13 +20,13 @@ var list_square = AND('[', _, contents,  _, ']')
 var list_curly = AND('{', _, contents,  _, '}')
 
 function PREFIX (str, sym) {
-  return GROUP(AND(str, value), e => [Symbol(sym), e[0]])
+  return GROUP(AND(str, value), e => [sym, e[0]])
 }
 
 var list = OR(list_round, list_square, list_curly)
 var easy_value = OR(list, string, number, nil, boolean, sym)
 
-var quote = PREFIX("&", 'quote')
+var quote = PREFIX("&", syms.quote)
 
 //morning thought: infix style?
 // (foo a b) -> a ~foo b
@@ -43,12 +42,12 @@ var quote = PREFIX("&", 'quote')
 var shortcuts = GROUP(AND(easy_value, OR(
     AND(_, ':', _, easy_value), //pair
     GROUP(MORE(AND(_, '.', _, easy_value)), e => {
-      return [symbols.get, null].concat(e)
+      return [syms.get, null].concat(e)
     }),
     EMPTY
   )), (e) => {
     if(e.length === 1) return e[0]
-    else if(e[1][0] === symbols.get)
+    else if(e[1][0] === syms.get)
       return (e[1][1] = e[0]), e[1]
     else
       return [e[0]].concat(e[1])
@@ -73,7 +72,7 @@ function JOIN_MUST (separator, name) {
 }
 
 var pair = PAIR(':')
-var chain = JOIN_MUST('.', 'get')
+var chain = JOIN_MUST('.', syms.get)
 
 value(pair, chain, quote, easy_value)
 */

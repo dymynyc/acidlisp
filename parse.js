@@ -35,7 +35,6 @@ var quote = PREFIX("&", 'quote')
 // second foo must be parens, you'd need parens anyway.
 // (bar c (foo a b)) -> c ~bar (foo a b)
 
-
 //The following is a performance hack!
 //the most obvious way to do this involved
 //too much back tracking and any slightly non-trivial
@@ -43,12 +42,14 @@ var quote = PREFIX("&", 'quote')
 
 var shortcuts = GROUP(AND(easy_value, OR(
     AND(_, ':', _, easy_value), //pair
-    GROUP(MORE(AND(_, '.', _, easy_value)), e => [symbols.get, null].concat(e)),
-    EMPTY//empty
+    GROUP(MORE(AND(_, '.', _, easy_value)), e => {
+      return [symbols.get, null].concat(e)
+    }),
+    EMPTY
   )), (e) => {
     if(e.length === 1) return e[0]
-    else if(e[1] === symbols.get)
-      return e[1][1] = e[0], e[1]
+    else if(e[1][0] === symbols.get)
+      return (e[1][1] = e[0]), e[1]
     else
       return [e[0]].concat(e[1])
   })

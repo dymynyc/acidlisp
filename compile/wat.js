@@ -87,22 +87,26 @@ exports.module = function (ast) {
   var funs = getFunctions(ast)
   var ref
   return '(module\n' +
-   '(memory (export "memory") 1)\n' +
     indent(
-      funs.map(e => exports.fun(e.slice(1))).join('\n') +
+      '(memory (export "memory") 1)\n\n' +
+      funs.map(
+        (e, i) => //';; func '+i + '\n' +
+              exports.fun(e.slice(1))
+      ).join('\n') +
+      '\n'+
       ast.filter(e => e[0] === syms.export).map(e => {
         if(isSymbol(e[1]) && e[2]) {// named export
           ref = assertRef(e[2])
           var export_name = e[1].description
           return '(export '+ JSON.stringify(export_name) +
-          ' (func ' + fromRef(ref) + '))\n'
+          ' (func ' + fromRef(ref) + '))'
         }
         else {
           ref = assertRef(e[1])
           var export_name = "main" //default export name if you only export one thing
         }
         return '(export '+ JSON.stringify(export_name) +
-          ' (func ' + fromRef(ref) + '))\n'
+          ' (func ' + fromRef(ref) + '))'
       }).join('\n')
     ) +
   '\n)'

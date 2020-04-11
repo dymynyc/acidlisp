@@ -10,6 +10,7 @@ var resolve = require('./resolve')(
 var fs = require('fs')
 function createImport (dir) {
   return function (require) {
+    require = require.toString()
     if(Array.isArray(require)) require = require[0]
     var target = resolve(require, dir)
     return l6.eval(fs.readFileSync(target, 'utf8'), {

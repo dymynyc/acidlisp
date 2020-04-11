@@ -7,8 +7,10 @@ var js         = require('./compile/js')
 var {isString} = require('./util')
 var env        = require('./env')
 
+exports.bind = ev.band
+
 function evalIf(src, _env) {
-  return isString(src) ? ev(parse(src), _env || env) : src
+  return isString(src) ? ev(ev.bind(parse(src),  _env || env),_env || env) : src
 }
 exports.eval = evalIf
 

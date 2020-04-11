@@ -21,19 +21,23 @@ var core = {
 function bind(ast, env) {
   var value
 
-  if(isSymbol(ast) && isDefined(value = lookup(ast, env))) {
+  if(isBasic(ast)) return ast
+  else if(isSymbol(ast) && isDefined(value = lookup(ast, env))) {
     if(isFunction(value))
       return ast
     else
       return value
   }
-  else if(isBasic(ast)) return ast
   else if(isArray(ast) && ast[0] === syms.fun)
     return ast
-//  else if(isArray(ast) && ast[0] === syms.mac) {
-//    //var {name, args, body} = parseFun(ast)
-//    call(ast, 
-//  }
+  //bind macro defs, so that you can define (or import) a macro then use it.
+  //also, this means macros can be exported.
+  //XXX this lookup should be more generic
+  else if(isArray(ast) && ast[0] === syms.def && isSymbol(ast[1]) && isMac(ast[2])) {
+    //def returning def value is consistent with eval. not sure if
+    //thats the right way, but it doesn't break anything.
+    return env[ast[1].description] = ast[2]
+  }
   else if(isArray(ast) && ast[0] === syms.get) {
     if(ast.length == 1) throw new Error('cannot eval get, no arguments:'+stringify(ast))
     var value = env
@@ -48,12 +52,16 @@ function bind(ast, env) {
     if(isSymbol(ast[0]) && core[ast[0].description])
         return [ast[0]].concat(ast.slice(1).map(e => bind(e, env)))
     else if(isMac(mac = ast[0]) || isMac(mac = isSymbol(ast[0]) && lookup(ast[0], env))) {
-      console.error('eval mac', ast)
-      //will probably return a quote which is then bound.
-      return call(mac, ast.slice(1), env)
+      //will probably return a quote which is then bound (in eval)
+      return call(mac, ast.slice(1).map(a => bind(a, env)), env)
     }
-    else
-      return ast.map(e => bind(e, env))
+    else {
+      //hang on, do I bind the arguments first?
+      //binding twice doesn't break things, i think.
+      var value = ast.map(e => bind(e, env))
+      if(isArray(value) && isMac(value[0])) return bind(value, env)
+      return value
+    }
   }
   else
     return ast
@@ -177,6 +185,12 @@ function ev (ast, env) {
   }
 
   //user defined functions
+  if(isSymbol(ast[0]) && isFun(value = lookup(ast[0], env)))
+    return call(value, ast.slice(1), env)
+
+  //when a macro runs while in eval mode, do we re-eval the output?
+  //or do we run bind on the whole ast before evaling?
+  //user defined macros
   if(isSymbol(ast[0]) && isFun(value = lookup(ast[0], env)))
     return call(value, ast.slice(1), env)
 

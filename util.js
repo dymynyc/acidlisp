@@ -43,6 +43,8 @@ function isBoolean(b) {
   return 'boolean' === typeof b
 }
 
+//note: decided to use buffers instead of strings.
+//(since reimplementing js string quirks is a bad idea)
 function isString(s) {
   return 'string' === typeof s
 }
@@ -101,6 +103,28 @@ function stringify (s, env) {
 
 exports.stringify = stringify
 
+function getThings (tree, isThing, things) {
+  things = things || []
+  ;(function maybe(it) {
+    if(/*isArray(it) && */isThing(it) && !~things.indexOf(it)) {
+      things.push(it)
+      if(isArray(it))
+        for(var i = 1; i < it.length; i++)
+          maybe(it[i])//isSymbol(fn[1]) ? fn[3] : fn[2])
+    }
+    else if(isArray(it))
+      it.forEach(maybe)
+  })(tree)
+  return things
+}
+
+exports.getFunctions = function (tree, funs) {
+  return getThings(tree, isFun, funs)
+}
+exports.getStrings = function (tree, strings) {
+  return getThings(tree, isBuffer, strings)
+}
+
 exports.toRef = function (n, fun) {
   if(!~n) throw new Error('missing reference, for:'+stringify(fun))
   return Symbol('$f_'+n)
@@ -111,7 +135,6 @@ var isRef = exports.isRef = function (ref) {
 exports.fromRef = function (ref) {
   return isRef(ref) ? +ref.description.substring(3) : ref
 }
-
 
 function traverse (tree, each_branch, each_leaf) {
   if(isFunction(tree) && tree.source)
@@ -192,10 +215,6 @@ exports.isHigherOrder = function (fun) {
     if(isSymbol(branch[0]) && args[branch[0].description])
       higher[branch[0].description] = true
   })
-}
-
-function isFun(tree) {
-  return isArray(tree) && tree[0] === syms.fun
 }
 
 var isExpressionTree = exports.isExpressionTree = function (tree) {

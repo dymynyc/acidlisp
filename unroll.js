@@ -1,7 +1,7 @@
 var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound, isFun,
-  eqSymbol, equals,
+  eqSymbol, equals, getFunctions, getStrings,
   isExpressionTree, traverse, toRef
 } = require('./util')
 var syms = require('./symbols')
@@ -9,21 +9,6 @@ var syms = require('./symbols')
 // take a tree of expanded bound functions and remap them into a topographically
 // ordered set of definitions, with lexical references.
 
-function searchFunctions(tree, funs) {
-  funs = funs || []
-  if(isFun(tree) && !~funs.indexOf(tree)) {
-    funs.push(tree)
-    searchFunctions(isSymbol(tree[1]) ? tree[3] : tree[2], funs)
-  }
-  else
-    traverse(tree, function (branch) {
-      //find all bound functions referenced by a variable name.
-      branch.forEach(branch => {
-        searchFunctions(branch, funs)
-      })
-    })
-  return funs
-}
 
 function remap (tree, funs) {
   return tree.map(branch => {
@@ -46,7 +31,7 @@ function remap (tree, funs) {
 var flatten = require('./flatten')
 
 module.exports = function unroll (exports) {
-  var funs = searchFunctions(exports, [])
+  var funs = getFunctions(exports, [])
   function createRef(fun) {
     return !isFun(fun) ? fun : toRef(funs.indexOf(fun))
   }

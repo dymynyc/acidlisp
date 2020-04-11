@@ -1,11 +1,11 @@
-
 //TODO implement enough primitives to do something maybe useful
 //eq get_local i32.cont add/sub if call
 
 var {
-  isDefined, isSymbol, isArray,
-  isDef, isEmpty, isFunction, isNumber, isBound,
+  isDefined, isSymbol, isArray, isBuffer,
+  isDef, isFun, isEmpty, isFunction, isNumber, isBound,
   eqSymbol, equals, stringify, traverse,
+  getFunctions, getStrings,
   isExpressionTree,
   toRef, fromRef, isRef
 } = require('../util')
@@ -28,10 +28,6 @@ function indent (src) {
 function $ (sym) {
   if(!isSymbol(sym)) throw new Error('expected Symbol, got:'+sym)
   return sym.description[0] == '$' ? sym.description : '$'+sym.description
-}
-
-function isFun(f) {
-  return isArray(f) && eqSymbol(f[0], 'fun')
 }
 
 function getFun (f, message) {
@@ -61,19 +57,6 @@ function compile (ast, isBlock) {
   //hard coded strings will be encoded in a data section
 }
 
-function getFunctions (tree, funs) {
-  funs = funs || []
-  ;(function maybe(fn) {
-    if(isArray(fn) && eqSymbol(fn[0], 'fun') && !~funs.indexOf(fn)) {
-      funs.push(fn)
-      maybe(isSymbol(fn[1]) ? fn[3] : fn[2])
-    }
-    else if(isArray(fn))
-      fn.forEach(maybe)
-  })(tree)
-  return funs
-}
-
 exports = module.exports = function (ast, isBlock) {
   return compile(ast)
 }
@@ -86,6 +69,7 @@ function assertRef (r) {
 
 exports.module = function (ast) {
   var funs = getFunctions(ast)
+  var strings = getStrings(ast)
   var ref
   return '(module\n' +
     indent(
@@ -217,15 +201,3 @@ exports.i32_load = function ([ptr]) {
 exports.i32_store = function ([ptr, value]) {
   return '(i32.store '+compile(ptr)+' ' + compile(value)+')'
 }
-
-////module.exports = function (compile, exports) {
-//  for(var k in ops) (function (key, arity) {
-//    exports[k.replace(/\./g, '_')] = function  (args) {
-//      if(args.length != arity)
-//        throw new Error('wasm operation:'+key+' expects '+ arity +
-//          ' arguments, got:'+args.length+', '+(stringify(args)))
-//      return '('+k+' '+args.map(compile).join(' ')+')'
-//    }
-//  })(k, ops[k])
-//
-////}

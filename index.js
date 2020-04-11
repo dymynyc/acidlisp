@@ -8,6 +8,7 @@ var {isString} = require('./util')
 var env        = require('./env')
 
 exports.bind = ev.band
+exports.parse = parse
 
 function evalIf(src, _env) {
   return isString(src) ? ev(ev.bind(parse(src),  _env || env),_env || env) : src

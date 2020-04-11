@@ -1,4 +1,5 @@
-var {AND,OR,MAYBE,MORE,JOIN,RECURSE,GROUP,TEXT,EMPTY}  = require('stack-expression')
+var string = require('wasm-string/stack-expression')
+var {AND,OR,MAYBE,MORE,MANY,FAIL,JOIN,RECURSE,GROUP,TEXT,EMPTY}  = require('stack-expression')
 
 //mandatory whitespace (includes ;; comments)
 var __ = /^(?:(?:\s)|(?:;;[^\n]*))+/
@@ -10,7 +11,7 @@ var value = RECURSE ()
 
 var syms = require('./symbols')
 //note: json's value types already capture.
-var {string, number, boolean} = require('stack-expression/examples/json')
+var {number, boolean} = require('stack-expression/examples/json')
 var sym = TEXT(/^[a-zA-Z;_][a-zA-Z0-9_]*/, function (text) { return syms[text] || Symbol(text) })
 
 var nil = TEXT(/^nil/, function () { return null })
@@ -85,3 +86,5 @@ module.exports = function (src) {
     throw new Error('failed to parse fully:'+src)
   return out.groups[0]
 }
+
+module.exports.string = string

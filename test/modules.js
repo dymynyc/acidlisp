@@ -53,16 +53,7 @@ tape('import resolve tests', function (t) {
 
 tape('actually import stuff', function (t) {
 
-  function createImport (dir) {
-    return function ([require]) {
-      var target = resolve(require, dir)
-      return l6.eval(fs.readFileSync(target, 'utf8'), {
-        import: createImport(path.dirname(target)),
-        __proto__: env
-      })
-    }
-  }
-
+  var createImport = require('../load')
   var _import = createImport(path.join(__dirname, 'examples'))
 
   var raw = _import('./')

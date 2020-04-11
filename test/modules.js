@@ -70,7 +70,7 @@ tape('actually import stuff', function (t) {
   function testWrapped(s, name) {
     console.log(name)
     t.equal(s.foofoo(), 27)
-    t.equal(s.barbar(3), 9)
+    t.equal(s.barbar(3), 16)
     t.equal(s.barbaz(3, 5), 15)
   }
   var s = wrap(raw, env)

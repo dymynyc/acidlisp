@@ -1,4 +1,5 @@
 var syms = require('./symbols')
+var wasmString = require('wasm-string')
 
 var isArray = Array.isArray
 
@@ -46,8 +47,10 @@ function isString(s) {
   return 'string' === typeof s
 }
 
+var isBuffer = Buffer.isBuffer
+
 function isBasic(b) {
-  return isNumber(b) || isNull(b) || isBoolean(b) || isString(b)
+  return isBuffer(b) || isNumber(b) || isNull(b) || isBoolean(b) || isString(b)
 }
 function isBound(b) {
   return (
@@ -76,6 +79,7 @@ exports.isEmpty    = isEmpty
 exports.isNull     = isNull
 exports.isBoolean  = isBoolean
 exports.isString   = isString
+exports.isBuffer   = isBuffer
 exports.isFunction = isFunction
 exports.isFun      = isFun
 exports.isMac      = isMac
@@ -88,6 +92,7 @@ exports.equals     = equals
 function stringify (s, env) {
   if(isArray(s) && isSymbol(s[0]) && eqSymbol(s[0], 'ref'))
     return isFunction (s[1]) ? stringify(s[2]) : s[1]
+  if(isBuffer(s)) return wasmString.encode(s)
   if(isArray(s)) return '(' + s.map(stringify).join(' ') + ')'
   if(isSymbol(s)) return s.description
   if(isFunction(s)) return stringify(s.source)

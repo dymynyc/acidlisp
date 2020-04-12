@@ -102,7 +102,6 @@ exports.module = function (ast) {
   var ptr = 0, free = 0
   pointers = []
   var data = literals.map(function (e) {
-    console.log('ptr', ptr, e.toString())
     pointers.push(ptr)
     var b = Buffer.alloc(4)
     b.writeUInt32LE(e.length, 0)
@@ -184,7 +183,7 @@ exports.add = function add (args, funs) {
   if(args.length == 1) return compile(args[0])
   if(args.length == 2)
     return '(i32.add '+compile(args[0]) + ' ' + compile(args[1])+')'
-  return add([args[0], add(args.slice(1))])
+  return '(i32.add '+ compile(args[0]) + ' ' + add(args.slice(1))+')'
 }
 
 exports.sub = function sub (args) {
@@ -217,7 +216,11 @@ exports.lt = function (args) {
   return '(i32.lt_s '+compile(args[0]) + ' ' + compile(args[1])+')'
 }
 exports.block = function (args, funs, isBlock) {
-  return args.map((e,i) => compile(e, true)).join('\n')
+  return args.map((e,i) => {
+    if(i+1 < args.length && isArray(e) && isSymbol(e[0]) && /^\$/.test(e[0].description))
+      return '(drop '+compile(e, true)+')'
+    return compile(e, true)
+  }).join('\n')
 }
 
 exports.def = function ([sym, value], isBlock) {

@@ -3,6 +3,7 @@ var l6 = require('./')
 var path = require('path')
 var fs = require('fs')
 var env = require('./env')
+var {stringify} = require('./util')
 var resolve = require('./resolve')(
   'node_modules', '.l6', JSON.parse, 'package.json'
 )
@@ -25,9 +26,10 @@ module.exports = createImport
 if(!module.parent) {
   var load = createImport(process.cwd())
   var file = process.argv[2]
-  if(file)
+  if(!file)
     return console.error('l6 {relative_path} > out.wat')
   //convert to a relative path
   if(!/^\.\.?\//.test(file)) file = './'+file
+//  console.log(stringify(require('./unroll')(load(file))))
   console.log(l6.wat(load(file)))
 }

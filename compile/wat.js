@@ -9,13 +9,25 @@ var {
   isExpressionTree,
   toRef, fromRef, isRef
 } = require('../util')
+var wasmString = require('wasm-string')
 
 var syms = require('../symbols')
+
+function isLiteral (ast) {
+  return (
+    isArray(ast) &&
+    ast[0] === syms.get &&
+    eqSymbol(ast[1], '$LITERALS$')
+  )
+}
 
 function getDefs (ast, defs) {
   defs = defs || {}
   if(isArray(ast) && isDef(ast[0]))
     defs[$(ast[1])] = true
+
+  else if(isLiteral(ast))
+    ; //ignore literals
   else if(isArray(ast))
     ast.forEach(a => getDefs(a, defs))
   return Object.keys(defs).map(k => Symbol(k))
@@ -36,8 +48,15 @@ function getFun (f, message) {
   throw new Error('cannot find function:'+stringify(f)+ ' ' + (message || ''))
 }
 
+function toHex (b) {
+  return '"'+[].slice.call(b).map(c => '\\'+Buffer.from([c]).toString('hex')).join('')+'"'
+}
+var pointers = []
 function compile (ast, isBlock) {
-  if(isArray(ast)) {
+  if(isLiteral(ast)) {
+    return compile(pointers[ast[2]], false)
+  }
+  else if(isArray(ast)) {
     //first, check if it's a core method
     var fn_name = ast[0]
     var fn = exports[fn_name.description]
@@ -45,15 +64,17 @@ function compile (ast, isBlock) {
       return fn(ast.slice(1), isBlock)
     else {
       var fn_index = isRef(fn_name) ? fromRef(fn_name) : '$'+fn_name.description
-      return '(call '+fn_index+' ' + ast.slice(1).map(v => compile(v)).join(' ')+')'
+//      if(fn_index === '$undefined')
+      return '(call '+fn_index+' '+ast.slice(1).map(v => compile(v)).join(' ')+')'
     }
   }
   else if(isNumber(ast))
     return '(i32.const '+ast+')' //TODO other number types
   else if(isSymbol(ast))
     return '(local.get '+ $(ast) + ')'
-  else throw new Error('unsupported type:'+stringify(ast))
-
+  else
+    throw new Error('unsupported type:'+stringify(ast))
+  
   //hard coded strings will be encoded in a data section
 }
 
@@ -67,13 +88,41 @@ function assertRef (r) {
   return r
 }
 
+function getLiterals (ast) {
+  for(var i = 0; i < ast.length; i++) {
+    if(isDef(ast[i][0]) && eqSymbol(ast[i][1], '$LITERALS$'))
+      return literals = ast[i][2].slice(1) //slice to remove [list,...]
+  }
+  return []
+}
+
 exports.module = function (ast) {
   var funs = getFunctions(ast)
-  var strings = getStrings(ast)
+  var literals = getLiterals(ast)
+  var ptr = 0, free = 0
+  pointers = []
+  var data = literals.map(function (e) {
+    console.log('ptr', ptr, e.toString())
+    pointers.push(ptr)
+    var b = Buffer.alloc(4)
+    b.writeUInt32LE(e.length, 0)
+    ptr += 4 + e.length
+    return [b, e]
+  })
+  free = ptr //where the next piece of data should go
   var ref
   return '(module\n' +
     indent(
       '(memory (export "memory") 1)\n\n' +
+      //a global variable that points to the start of the free data.
+      '(global $FREE (mut i32) ' + compile(free)+')\n'+
+      '(data 0 (offset ' + compile(0)+')\n'+
+        indent(data.map((e, i) =>
+          toHex(e[0]) +
+          ' ;; ptr='+pointers[i] + ', len=' + e[0].readUInt32LE(0) + '\n' +
+          wasmString.encode(e[1])
+        ).join('\n'))
+      +')\n\n'+
       funs.map(
         (e, i) => //';; func '+i + '\n' +
               exports.fun(e.slice(1))
@@ -121,7 +170,12 @@ exports.if = function ([test, then, e_then]) {
   else
     return '(if\n' + indent(
       compile(test, true) + '\n(then '+
-      compile(then, true)+'))')
+      compile(then, true)+'))'
+      )
+}
+
+exports.eq = function ([a, b]) {
+  return '(i32.eq '+compile(a) + ' ' + compile(b) + ')'
 }
 
 //XXX apply steps like this in a special pass, before flattening.
@@ -191,13 +245,23 @@ exports.loop = function ([test, iter], funs) {
   }
 }
 
-var ops = {
-  'i32.load': [1],
-  'i32.store': [2, 2]
-}
 exports.i32_load = function ([ptr]) {
   return '(i32.load '+compile(ptr)+')'
 }
 exports.i32_store = function ([ptr, value]) {
   return '(i32.store '+compile(ptr)+' ' + compile(value)+')'
+}
+exports.i32_load8 = function ([ptr]) {
+  return '(i32.load8_u '+compile(ptr)+')'
+}
+exports.i32_store8 = function ([ptr, value]) {
+  return '(i32.store8 '+compile(ptr)+ ' ' + compile(value)+')'
+}
+// just a temporary hack!
+// instead implement globals that only a module can see...
+exports.set_global = function ([index, value]) {
+  return '(global.set '+index+' ' + compile(value)+')'
+}
+exports.get_global = function ([index, value]) {
+  return '(global.get '+index+')'
 }

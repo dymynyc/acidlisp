@@ -119,3 +119,7 @@ exports.or = function (args) {
 exports.lt = function ([a, b]) {
   return '(' + compile(a) + ' < ' + compile(b) +')'
 }
+
+exports.list = function (args) {
+  return '[' + args.map(compile).join(', ') + ']'
+}

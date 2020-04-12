@@ -1,6 +1,3 @@
-//TODO implement enough primitives to do something maybe useful
-//eq get_local i32.cont add/sub if call
-
 var {
   isDefined, isSymbol, isArray, isBuffer,
   isDef, isFun, isEmpty, isFunction, isNumber, isBound,
@@ -12,6 +9,10 @@ var {
 var wasmString = require('wasm-string')
 
 var syms = require('../symbols')
+
+function w(name, args) {
+  return '(' + name + ' ' + (isArray(args) ? args.join(' ') : args) + ')'
+}
 
 function isLiteral (ast) {
   return (
@@ -43,7 +44,7 @@ function $ (sym) {
 }
 
 function getFun (f, message) {
-  if(isFunction (f)) return f.source
+  if(isFunction (f)) throw new Error('js functions cannot be compiled to wat')
   if(isFun (f)) return f
   throw new Error('cannot find function:'+stringify(f)+ ' ' + (message || ''))
 }
@@ -51,6 +52,8 @@ function getFun (f, message) {
 function toHex (b) {
   return '"'+[].slice.call(b).map(c => '\\'+Buffer.from([c]).toString('hex')).join('')+'"'
 }
+
+//TODO: fix this pointers thing
 var pointers = []
 function compile (ast, isBlock) {
   if(isLiteral(ast)) {
@@ -64,16 +67,15 @@ function compile (ast, isBlock) {
       return fn(ast.slice(1), isBlock)
     else {
       var fn_index = isRef(fn_name) ? fromRef(fn_name) : '$'+fn_name.description
-//      if(fn_index === '$undefined')
-      return '(call '+fn_index+' '+ast.slice(1).map(v => compile(v)).join(' ')+')'
+      return w('call', [fn_index].concat(ast.slice(1).map(compile)) )
     }
   }
   else if(isNumber(ast))
-    return '(i32.const '+ast+')' //TODO other number types
+    return w('i32.const', ast) //TODO other number types
   else if(isSymbol(ast))
-    return '(local.get '+ $(ast) + ')'
+    return w('local.get', $(ast))
   else
-    throw new Error('unsupported type:'+stringify(ast))
+    throw new Error('cannot compile unsupported type:'+stringify(ast))
   
   //hard coded strings will be encoded in a data section
 }
@@ -112,8 +114,11 @@ exports.module = function (ast) {
   var ref
   return '(module\n' +
     indent(
+
       '(memory (export "memory") 1)\n\n' +
       //a global variable that points to the start of the free data.
+
+      //data, literals (strings so far)
       '(global $FREE (mut i32) ' + compile(free)+')\n'+
       '(data 0 (offset ' + compile(0)+')\n'+
         indent(data.map((e, i) =>
@@ -122,24 +127,23 @@ exports.module = function (ast) {
           wasmString.encode(e[1])
         ).join('\n'))
       +')\n\n'+
-      funs.map(
-        (e, i) => //';; func '+i + '\n' +
-              exports.fun(e.slice(1))
-      ).join('\n') +
+
+      //functions
+      funs.map((e, i) => exports.fun(e.slice(1))).join('\n') +
       '\n'+
+
+      //exports
       ast.filter(e => e[0] === syms.export).map(e => {
         if(isSymbol(e[1]) && e[2]) {// named export
           ref = assertRef(e[2])
           var export_name = e[1].description
-          return '(export '+ JSON.stringify(export_name) +
-          ' (func ' + fromRef(ref) + '))'
+          return w('export', [JSON.stringify(export_name), w('func', fromRef(ref))])
         }
         else {
           ref = assertRef(e[1])
           var export_name = "main" //default export name if you only export one thing
         }
-        return '(export '+ JSON.stringify(export_name) +
-          ' (func ' + fromRef(ref) + '))'
+        return w('export', [JSON.stringify(export_name), w('func', fromRef(ref))])
       }).join('\n')
     ) +
   '\n)'
@@ -167,64 +171,54 @@ exports.if = function ([test, then, e_then]) {
       compile(then, true)+')\n(else '+
       compile(e_then, true) + '))')
   else
-    return '(if\n' + indent(
+    return'(if ' + indent(
       compile(test, true) + '\n(then '+
       compile(then, true)+'))'
       )
 }
 
-exports.eq = function ([a, b]) {
-  return '(i32.eq '+compile(a) + ' ' + compile(b) + ')'
-}
-
 //XXX apply steps like this in a special pass, before flattening.
 //applies to most functions and also if
-exports.add = function add (args, funs) {
-  if(args.length == 1) return compile(args[0])
-  if(args.length == 2)
-    return '(i32.add '+compile(args[0]) + ' ' + compile(args[1])+')'
-  return '(i32.add '+ compile(args[0]) + ' ' + add(args.slice(1))+')'
+
+function recurseOp(name) {
+  return function recurse (args) {
+    if(args.length == 1) return compile(args[0])
+    if(args.length == 2)
+      return w(name, [compile(args[0]),  compile(args[1]) ])
+    return w(name, [compile(args[0]), recurse(args.slice(1))])
+  }
 }
 
-exports.sub = function sub (args) {
-  if(args.length == 1) return compile(args[0])
-  if(args.length == 2)
-    return '(i32.sub '+compile(args[0]) + ' ' + compile(args[1])+')'
-  return sub([args[0], sub(args.slice(1))])
+exports.add = recurseOp('i32.add')
+exports.sub = recurseOp('i32.sub')
+exports.mul = recurseOp('i32.mul')
+exports.div = recurseOp('i32.div_s')
+exports.and = recurseOp('i32.and')
+exports.or  = recurseOp('i32.or')
+
+function pairOp (name) {
+  return function ([a, b]) {
+    return w(name, [compile(a), compile(b)])
+  }
 }
 
-exports.mul = function mul (args, funs) {
-  if(args.length == 1) return compile(args[0])
-  if(args.length == 2)
-    return '(i32.mul '+compile(args[0]) + ' ' + compile(args[1])+')'
-  return mul([args[0], mul(args.slice(1))])
-}
-exports.div = function div (args, funs) {
-  if(args.length == 1) return compile(args[0])
-  if(args.length == 2)
-    return '(i32.div_s '+compile(args[0]) + ' ' + compile(args[1])+')'
-  return div([args[0], div(args.slice(1))])
-}
+exports.lt  = pairOp('i32.lt_s')
+exports.lte = pairOp('i32.le_s')
+exports.gt  = pairOp('i32.gt_s')
+exports.gte = pairOp('i32.ge_s')
+exports.eq  = pairOp('i32.eq')
+exports.neq = pairOp('i32.neq')
 
-exports.and = function and (args) {
-  if(args.length == 1) return compile(args[0])
-  if(args.length == 2)
-    return '(i32.and '+compile(args[0]) + ' ' + compile(args[1])+')'
-  return and([args[0], and(args.slice(1))], funs)
-}
-exports.lt = function (args) {
-  return '(i32.lt_s '+compile(args[0]) + ' ' + compile(args[1])+')'
-}
 exports.block = function (args, funs, isBlock) {
   return args.map((e,i) => {
     if(i+1 < args.length && isArray(e) && isSymbol(e[0]) && /^\$/.test(e[0].description))
-      return '(drop '+compile(e, true)+')'
+      return w('drop', compile(e, true))
     return compile(e, true)
   }).join('\n')
 }
 
 exports.def = function ([sym, value], isBlock) {
-  return '(local.' +(isBlock ? 'set':'tee')+' '+$(sym)+' ' + compile(value)+')'
+  return w('local.' +(isBlock ? 'set':'tee'), [$(sym), compile(value)])
 }
 
 exports.loop = function ([test, iter], funs) {
@@ -249,22 +243,22 @@ exports.loop = function ([test, iter], funs) {
 }
 
 exports.i32_load = function ([ptr]) {
-  return '(i32.load '+compile(ptr)+')'
+  return w('i32.load', compile(ptr))
 }
 exports.i32_store = function ([ptr, value]) {
-  return '(i32.store '+compile(ptr)+' ' + compile(value)+')'
+  return w('i32.store', [compile(ptr), compile(value)])
 }
 exports.i32_load8 = function ([ptr]) {
-  return '(i32.load8_u '+compile(ptr)+')'
+  return w('i32.load8_u', compile(ptr))
 }
 exports.i32_store8 = function ([ptr, value]) {
-  return '(i32.store8 '+compile(ptr)+ ' ' + compile(value)+')'
+  return w('i32.store8', [compile(ptr), compile(value)])
 }
 // just a temporary hack!
 // instead implement globals that only a module can see...
 exports.set_global = function ([index, value]) {
-  return '(global.set '+index+' ' + compile(value)+')'
+  return w('global.set', [index, compile(value)])
 }
 exports.get_global = function ([index, value]) {
-  return '(global.get '+index+')'
+  return w('global.get', index)
 }

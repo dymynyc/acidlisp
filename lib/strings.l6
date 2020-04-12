@@ -1,0 +1,35 @@
+(module
+  ;; string format: length(i32) data(bytes){length}
+;;  (def mem (import "./memory"))
+
+  (def min {fun [x y] (if (lt x y) x y)})
+  (def length {fun [w] (i32_load w)})
+
+  (export length length)
+  (export compare {fun [a b] (block
+    (def len [add { min (length a) (length b)} 4])
+    (def i 4)
+    (if
+      ;; if min length is zero, is the other one longer?
+      (eq len 0) (sub (length a) (length b))
+      {block
+        (loop
+          {and (lt i len)
+               [eq (def r [sub (i32_load8 (add a i)) (i32_load8 (add b i))]) 0]}
+          (block
+            (def i (add i 1))
+;;            (def r [sub (i32_load8 (add a i)) (i32_load8 (add b i))])
+          )
+        )
+        (if (lt i len) r 0)
+      }
+    )
+  )})
+
+;;  (export slice {fun (str start end) [block
+;;    (def len [sub (if end end (length str)) start])
+;;    (def _str (mem.alloc (add 4)))
+;;    (i32_store _str len) ;;string starts with i32 of length
+;;    (def i (add _str 4))
+;;  ]})
+)

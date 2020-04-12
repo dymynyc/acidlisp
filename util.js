@@ -223,7 +223,7 @@ var isExpressionTree = exports.isExpressionTree = function (tree) {
     tree[0] === syms.if ||
     tree[0] === syms.loop ||
     tree[0] === syms.block ||
-    isSymbol(tree[0]) && /_store$/.test(tree[0].description)
+    isSymbol(tree[0]) && /_store\d*$/.test(tree[0].description)
 
   ) return false
   else

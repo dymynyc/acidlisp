@@ -119,7 +119,7 @@ var flatten = module.exports = function flatten (tree, n) {
         $(m)
       )], $(m)]
   }
-  else if (isSymbol(tree[0]) && /_store$/.test(tree[0].description)) {
+  else if (isSymbol(tree[0]) && /_store\d*$/.test(tree[0].description)) {
     //console.log("FLATTEN STORE", tree)
 //    if(isExpressionTree(tree[2]))
 //      [syms.block, [tree[1], tree[2], insertDef(tree[3], n)], 

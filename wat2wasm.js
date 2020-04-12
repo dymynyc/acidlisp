@@ -5,10 +5,14 @@ function load(file) {
   var wasm = fs.readFileSync(file)
   var m = new WebAssembly.Module(wasm)
   var instance = new WebAssembly.Instance(m)
-  if(instance.exports.main)
+  if(instance.exports.main) {
+    instance.exports.main.memory = Buffer.from(instance.exports.memory.buffer)
     return instance.exports.main
-  else
+  }
+  else {
+    instance.exports.memory = Buffer.from(instance.exports.memory.buffer)
     return instance.exports
+  }
 }
 module.exports = function (src, cb) {
   var ts = Date.now()

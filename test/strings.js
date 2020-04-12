@@ -1,10 +1,13 @@
 var l6          = require('../')
 var tape        = require('tape')
-var {stringify} = require('../util')
 
 var syms        = require('../symbols')
 var unroll      = require('../unroll')
 var compileWat  = require('../compile/wat')
+
+var {
+  stringify, isBuffer
+} = require('../util')
 
 var load = require('../load')(__dirname)
 var env = load('../lib/strings.l6')
@@ -12,8 +15,8 @@ var inputs = [
   '(compare "abc" "abc")',
   '(compare "abc" "abd")',
   '(compare "abc" "abb")',
-//  '(concat "hello" ", world")',
-//  '(slice "hi there" 1 4)',
+  '(concat "hello" ", world")',
+  '(slice "hi there" 1 4)',
 //  `(block
 //    (def hmyj "hello mellow yellow jello")
 //    (def hello (slice hmyj 0 5))
@@ -31,6 +34,12 @@ function toModule (src) {
     [syms.export, [syms.fun, [], l6.parse(src)]]])
 }
 
+function readBuffer(memory, ptr) {
+  var len = memory.readUInt32LE(ptr)
+  return memory.slice(4+ptr, 4+ptr+len)
+}
+
+
 var outputs = [
   0,
   -1,
@@ -47,7 +56,19 @@ inputs.forEach(function (v, i) {
 //    var r = unroll(l6.eval(toModule(inputs[i]), env))
 //    console.log(compileWat(r))
     var m = toModule(inputs[i])
-    t.equal(l6.wasm(m, env)(), outputs[i], 'wasm correct output')
+    try {
+    var fn = l6.wasm(m, env)
+    } catch (e) {
+      console.log(l6.wat(m, env))
+      throw e
+    }
+    if(isBuffer(outputs[i])) {
+      var ptr = fn()
+      console.log(fn.memory)
+      t.deepEqual(readBuffer(fn.memory, ptr), outputs[i])
+    }
+    else
+      t.equal(l6.wasm(m, env)(), outputs[i], 'wasm correct output')
 
 //    t.equal(l6.js_eval(toModule(inputs[i]), env)(), outputs[i], 'javascript correct output')
     t.end()

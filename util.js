@@ -106,11 +106,11 @@ exports.stringify = stringify
 function getThings (tree, isThing, things) {
   things = things || []
   ;(function maybe(it) {
-    if(/*isArray(it) && */isThing(it) && !~things.indexOf(it)) {
+    if(isThing(it) && !~things.indexOf(it)) {
       things.push(it)
       if(isArray(it))
-        for(var i = 1; i < it.length; i++)
-          maybe(it[i])//isSymbol(fn[1]) ? fn[3] : fn[2])
+        for(var i = 0; i < it.length; i++)
+          maybe(it[i])
     }
     else if(isArray(it))
       it.forEach(maybe)

@@ -1,22 +1,21 @@
 var {
-  isFun, isSymbol, parseFun
+  isFun, isSymbol, parseFun, toEnv
 } = require('./util')
 
 var ev = require('./eval')
 var syms = require('./symbols')
 
-function call (fun, argv, _env) {
-  var {name, args, body} = parseFun(fun)
-  var env = {__proto__: _env}
-  //iterate over symbols and look up values
-  //then can't pass the wrong number.
-  args.forEach((s, i) => env[s.description] = argv[i])
-  return ev(body, env)
-}
+//we have a separate call function defined here,
+//because we are calling _from_ javascript land
+//where the arguments are already evaluated.
+//function call (fun, argv, _env) {
+//  var {name, args, body} = parseFun(fun)
+//  return ev(body, toEnv(args, argv, _env))
+//}
 
 function wrapFn (fun, env) {
   return function () {
-    return call(fun, [].slice.call(arguments), env)
+    return ev.call(fun, [].slice.call(arguments), env)
   }
 }
 
@@ -28,6 +27,4 @@ exports = module.exports = function (tree, env) {
   return o
 }
 
-exports.parseFun = parseFun
-exports.call     = call
 exports.wrapFn   = wrapFn

@@ -106,6 +106,14 @@ function parseFun (fun) {
 
 exports.parseFun = parseFun
 
+exports.toEnv = function (args, argv, _env) {
+  var env = {__proto__: _env}
+  if(argv.length < args.length)
+    throw new Error('too few arguments, expected:'+args.length+' got:'+argv.length)
+  args.forEach((s, i) => env[s.description] = argv[i])
+  return env
+}
+
 function stringify (s, env) {
   if(isArray(s) && isSymbol(s[0]) && eqSymbol(s[0], 'ref'))
     return isFunction (s[1]) ? stringify(s[2]) : s[1]

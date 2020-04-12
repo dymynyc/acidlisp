@@ -1,7 +1,7 @@
 var {
   isDefined, isSymbol, isArray, isNull, isBoolean, isString,
   isEmpty, isFunction, isNumber, isBound, isBasic,
-  isDef, isMac, isFun,  parseFun,
+  isDef, isMac, isFun,  parseFun, toEnv,
   eqSymbol, equals, stringify
 } = require('./util')
 var syms = require('./symbols')
@@ -75,24 +75,22 @@ function bind(ast, env) {
 }
 
 function call (fun, argv, env) {
-  if(isFunction(fun))
-    return fun(argv.map(v => ev(v, env)), env)
+  if(isFunction(fun)) return fun(argv, env)
 
   var {name, args, body} = parseFun(fun)
 
-  var _env = {__proto__: env }
-  if(argv.length < args.length)
-    throw new Error('too few arguments, expected:'+args.length+' got:'+argv.length)
-
-  //note: if it's a macro, don't eval arguments
-  args.forEach((k, i) =>
-    _env[k.description] = isMac(fun) ? argv[i] : ev(argv[i], env))
+  env = toEnv(args, argv, env)
 
   //if it's a named fun/mac set that in the env, so can call recursively.
-  if(name) _env[name.description] = fun
-  return ev(body, _env)
+  if(name) env[name.description] = fun
+
+  return ev(body, env)
 }
 
+
+function mapEv(list, env) {
+  return list.map(v => ev(v, env))
+}
 
 function ev (ast, env) {
   var value
@@ -146,13 +144,13 @@ function ev (ast, env) {
       }
     }
 
-    //this happens if we are _defining_ a macro
-    //should we bind it?
+    //in eval mode, just return the macro, so that it can be
+    //exported from modules. it will be dropped when compiling.
     if(symbol === syms.mac) {
       return ast
-      //throw new Error('encountered macro in eval context')
     }
 
+    //a block evaluates each expression and returns the last value
     if(symbol === syms.block) {
       for(var i = 1; i < ast.length; i++)
         value = ev(ast[i], env)
@@ -195,20 +193,13 @@ function ev (ast, env) {
 
     //user defined functions
     if(isFun(value) || isFunction(value))
-      return call(value, ast.slice(1), env)
+      return call(value, mapEv(ast.slice(1), env), env)
 
-    //when a macro runs while in eval mode, do we re-eval the output?
-    //or do we run bind on the whole ast before evaling?
-    //user defined macros
-
-//    //js functions passed in as env.
-//    if(isFunction(value))
-//      return value(ast.slice(1).map(e => ev(e, env)))
   }
   //expression that evaluates to a function
   if(isArray(ast[0])) {
     var fn = ev(ast[0], env)
-    return call (fn, ast.slice(1), env)
+    return call (fn, mapEv(ast.slice(1), env), env)
   }
 
   throw new Error('could not eval:' +stringify(ast))
@@ -217,3 +208,4 @@ function ev (ast, env) {
 exports = module.exports = ev
 
 exports.bind = bind
+exports.call = call

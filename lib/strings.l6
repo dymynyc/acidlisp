@@ -1,6 +1,6 @@
 (module
   ;; string format: length(i32) data(bytes){length}
-;;  (def mem (import "./memory"))
+  (def mem (import "./memory"))
 
   (def min {fun [x y] (if (lt x y) x y)})
   (def length {fun [w] (i32_load w)})
@@ -26,10 +26,39 @@
     )
   )})
 
-;;  (export slice {fun (str start end) [block
-;;    (def len [sub (if end end (length str)) start])
-;;    (def _str (mem.alloc (add 4)))
-;;    (i32_store _str len) ;;string starts with i32 of length
-;;    (def i (add _str 4))
-;;  ]})
+  (export slice {fun (str start end) [block
+    (def len [sub (if end end (length str)) start])
+    (def _str (mem.alloc (add len 4)))
+    (i32_store _str len) ;;string starts with i32 of length
+    (def i 0) ;;(add _str 4))
+    (loop
+      [lt i len]
+      {block
+        [i32_store8 (add _str 4 i) {i32_load8 (add str 4 start i)}]
+        (def i (add i 1))})
+    _str
+  ]})
+
+  (def copy {fun (source s_start s_end target t_start) [block
+    (def i 0)
+    ;;haha, some bounds checking and errors would be good here
+    (loop (lt i s_end)
+      [block
+        (i32_store8
+          (add 4 target t_start i)
+          (i32_load8 (add 4 source s_start i)))
+        (def i (add i 1))
+      ])
+     0
+  ]})
+  (export copy copy)
+  (export concat {fun (a b) [block
+    (def len (add (length a) (length b)))
+    (def c (mem.alloc (add 4 len)))
+    (def i 4)
+    (i32_store c len)
+    (copy a 0 (length a) c 0)
+    (copy b 0 (length b) c (length a))
+    c
+  ]})
 )

@@ -1,16 +1,9 @@
 var {
-  isFun, isSymbol
+  isFun, isSymbol, parseFun
 } = require('./util')
 
 var ev = require('./eval')
 var syms = require('./symbols')
-
-function parseFun (fun) {
-  if(syms.fun === fun[0] && isSymbol(fun[1]))
-    return {name: fun[1], args:fun[2], body: fun[3]}
-  else
-    return {name: null, args:fun[1], body: fun[2]}
-}
 
 function call (fun, argv, _env) {
   var {name, args, body} = parseFun(fun)

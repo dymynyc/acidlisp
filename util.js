@@ -91,6 +91,21 @@ exports.isBound    = isBound
 exports.eqSymbol   = eqSymbol
 exports.equals     = equals
 
+function parseFun (fun) {
+  if(isSymbol(fun[1]))
+    return {
+      fun: syms.fun === fun[0], mac: syms.mac === fun[0],
+      name: fun[1], args:fun[2], body: fun[3]
+    }
+  else
+    return {
+      fun: syms.fun === fun[0], mac: syms.mac === fun[0],
+      name: null, args:fun[1], body: fun[2]
+    }
+}
+
+exports.parseFun = parseFun
+
 function stringify (s, env) {
   if(isArray(s) && isSymbol(s[0]) && eqSymbol(s[0], 'ref'))
     return isFunction (s[1]) ? stringify(s[2]) : s[1]

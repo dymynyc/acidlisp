@@ -19,6 +19,7 @@ function last (ary) {
 }
 
 function $ (n) {
+  if(!isDefined(n)) throw new Error('undefined:$(n)')
   return Symbol('$'+n)
 }
 

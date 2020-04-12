@@ -4,14 +4,24 @@ var unroll     = require('./unroll')
 var wat        = require('./compile/wat')
 var wat2wasm   = require('./wat2wasm')
 var js         = require('./compile/js')
-var {isString} = require('./util')
 var env        = require('./env')
+var {
+  isString, isArray
+} = require('./util')
 
 exports.bind = ev.band
 exports.parse = parse
 
+function envify(ary) {
+  if(!isArray(ary)) return ary
+  var _env = {}
+  ary.forEach(([k, v]) => _env[k.description] = v)
+  return _env
+}
+
 function evalIf(src, _env) {
-  return isString(src) ? ev(ev.bind(parse(src),  _env || env),_env || env) : src
+  _env = envify(_env||env)
+  return isString(src) ? ev(ev.bind(parse(src),  _env), _env) : src
 }
 exports.eval = evalIf
 

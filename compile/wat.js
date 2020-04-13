@@ -19,7 +19,7 @@ function _w(name, args) {
   var i = args.indexOf('\n')
   var lines = args.split('\n').length
   var close = lines > 20 ? '\n)' : ')'
-  if(name.length + args.length < line_length)
+  if(name.length + args.length < line_length && lines === 1)
     return '(' + name +' ' + args + ')'
   else if(~i && i < line_length/2)
     return '(' + name + ' ' + indent(args).trim() + close
@@ -29,6 +29,7 @@ function _w(name, args) {
 
 function w(name, args) {
   if(isArray(args)) {
+    args.filter(Boolean)
     var length = args.reduce((sum, a) => sum + a.length, 0)
     return _w(name, args.join(
       args.every(isSingleLine) && length < line_length ? ' ' : '\n'
@@ -37,6 +38,7 @@ function w(name, args) {
 
   if(!isString(args))
     args = args.toString()
+
   return _w(name, args)
 }
 
@@ -89,8 +91,10 @@ function compile (ast, isBlock) {
     //first, check if it's a core method
     var fn_name = ast[0]
     var fn = exports[fn_name.description]
-    if(fn)
+    if(fn) {
+      if(!isFunction(fn)) throw new Error('cannot compile:'+fn_name.description)
       return fn(ast.slice(1), isBlock)
+    }
     else {
       var fn_index = isRef(fn_name) ? fromRef(fn_name) : '$'+fn_name.description
       return w('call', [fn_index].concat(ast.slice(1).map(compile)) )
@@ -138,12 +142,13 @@ exports.module = function (ast) {
   })
   free = ptr //where the next piece of data should go
   var ref
-  return w('module', [
-    w('memory', [w('export', '"memory"'), 1]) +
+  return w('module', ['\n',
+    w('memory', [w('export', '"memory"'), 1]),
     //a global variable that points to the start of the free data.
 
     //data, literals (strings so far)
-    w('global', ['$FREE', w('mut', 'i32'), compile(free)]) + '\n',
+    w('global', ['$FREE', w('mut', 'i32'), compile(free)]),
+    data.length &&
     w('data',
       [0, w('offset', compile(0))].concat(
       data.map((e, i) =>
@@ -151,7 +156,7 @@ exports.module = function (ast) {
         ' ;; ptr='+pointers[i] + ', len=' + e[0].readUInt32LE(0) + '\n' +
         wasmString.encode(e[1]))
       ).join('\n')
-    ) + '\n',
+    ) + '\n' || '',
 
     //functions
     funs.map((e, i) => exports.fun(e.slice(1))).join('\n\n') + '\n',
@@ -189,15 +194,17 @@ exports.fun = function (ast) {
 
 exports.if = function ([test, then, e_then]) {
   if(e_then)
-    return '(if\n' + indent(
-      compile(test) + '\n(then '+
-      compile(then, true)+')\n(else '+
-      compile(e_then, true) + '))')
+    return w('if', [
+      compile(test),
+      w('then', compile(then, true)),
+      w('else', compile(e_then, true))
+    ])
   else
-    return'(if ' + indent(
-      compile(test, true) + '\n(then '+
-      compile(then, true)+'))'
-      )
+    return w('if', [
+      compile(test),
+      w('then', compile(then, true))
+    ])
+
 }
 
 //XXX apply steps like this in a special pass, before flattening.
@@ -230,7 +237,7 @@ exports.lte = pairOp('i32.le_s')
 exports.gt  = pairOp('i32.gt_s')
 exports.gte = pairOp('i32.ge_s')
 exports.eq  = pairOp('i32.eq')
-exports.neq = pairOp('i32.neq')
+exports.neq = pairOp('i32.ne')
 
 exports.block = function (args, funs, isBlock) {
   return args.map((e,i) => {

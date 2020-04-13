@@ -29,7 +29,7 @@ exports.cat = function ([a,b]) {
 exports.list = function (args) {
   return args
 }
-exports.isEmpty = function ([list]) {
+exports.is_empty = function ([list]) {
   return list.length === 0
 }
 exports.concat = function (args) {
@@ -44,9 +44,13 @@ exports.char = function ([buffer, index]) {
 exports.compare = function ([a, b]) {
   return a.compare(b)
 }
-exports.compareAt = function ([buffer, start, end, _buffer, _start, _end]){
+exports.compare_at = function ([buffer, start, end, _buffer, _start, _end]){
   return buffer.compare(_buffer, _start, _end, start, end)
 }
+exports.equal_at = function ([buffer, start, _buffer, _start, length]){
+  return 0 === buffer.compare(_buffer, _start, _start+length, start, start+length)
+}
+
 exports.join = function ([list, sep]) {
   var a = []
   for(var i = 0; i < list.length; i++) {

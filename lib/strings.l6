@@ -6,6 +6,31 @@
   (def length {fun [w] (i32_load w)})
 
   (export length length)
+  (export equal_at {fun [a a_start b b_start len] (block
+    ;; minimum lengths to compare.
+    (def min_len
+      (min len
+        (min
+          (sub (length a) a_start)
+          (sub (length b) b_start))))
+    (if
+      ;; if neither string is long enough, return false
+      (neq min_len len)
+      0
+      [block
+        (def i 0)
+        (loop {and
+          (lt i len)
+          [eq
+            (i32_load8 (add 4 a a_start i))
+            (i32_load8 (add 4 b b_start i)) ]}
+          (def i (add i 1)))
+        ;;if we got to the end it means they are equal
+        (eq i len)
+      ]
+    )
+  )})
+
   (export compare {fun [a b] (block
     (def len [add { min (length a) (length b)} 4])
     (def i 4)

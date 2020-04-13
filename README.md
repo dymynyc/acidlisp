@@ -188,6 +188,17 @@ this won't work for recursion though, unless there is a way to convert recursion
 `foo` expands to `foo_ptr`
 ```
 
+## TODO: fix ugly hacks
+
+* get_global set_global functions.
+  instead have references like functions and strings? that are private to modules.
+* $literals$ string needs something to prevent collisions from modules.
+* hygenic macros btw
+* non-joke memory management
+* cli args (output different formats)
+* type inference?
+
+
 ## License
 
 MIT

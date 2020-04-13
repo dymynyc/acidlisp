@@ -1,5 +1,5 @@
 var string = require('wasm-string/stack-expression')
-var {AND,OR,MAYBE,MORE,MANY,FAIL,JOIN,RECURSE,GROUP,TEXT,EMPTY}  = require('stack-expression')
+var {AND,OR,MAYBE,MORE,MANY,FAIL,JOIN,RECURSE,GROUP,TEXT,EMPTY,EXPECT}  = require('stack-expression')
 
 //mandatory whitespace (includes ;; comments)
 var __ = /^(?:(?:\s)|(?:;;[^\n]*))+/
@@ -9,19 +9,28 @@ var _ = /^(?:(?:\s)|(?:;;[^\n]*))*/
 
 var value = RECURSE ()
 
+//function EXPECT (rule, name) {
+//  if('string' === typeof rule && !name)
+//    name = rule
+//  return OR(rule, FAIL('expected:'+name))
+//}
+
 var syms = require('./symbols')
 //note: json's value types already capture.
 var {number, boolean} = require('stack-expression/examples/json')
 var sym = TEXT(/^[a-zA-Z;_][a-zA-Z0-9_]*/, function (text) { return syms[text] || Symbol(text) })
 
+var describe_easy = 'number, string, boolean, nil, symbol, or list'
+var describe_value = 'number, string, boolean, nil, symbol, list, pair, property chain, or quote'
+
 var nil = TEXT(/^nil/, function () { return null })
 var contents = GROUP(MAYBE(JOIN(value, __)))
-var list_round = AND('(', _, contents,  _, ')')
-var list_square = AND('[', _, contents,  _, ']')
-var list_curly = AND('{', _, contents,  _, '}')
+var list_round = AND('(', _, contents,  _, EXPECT(')', ') or value'))
+var list_square = AND('[', _, contents,  _, EXPECT(']', '] or value'))
+var list_curly = AND('{', _, contents,  _, EXPECT('}', '} or value'))
 
 function PREFIX (str, sym) {
-  return GROUP(AND(str, value), e => [sym, e[0]])
+  return GROUP(AND(str, EXPECT(value, describe_value)), e => [sym, e[0]])
 }
 
 var list = OR(list_round, list_square, list_curly)
@@ -41,8 +50,8 @@ var quote = PREFIX("&", syms.quote)
 //string was really slow to parse.
 
 var shortcuts = GROUP(AND(easy_value, OR(
-    AND(_, ':', _, easy_value), //pair
-    GROUP(MORE(AND(_, '.', _, easy_value)), e => {
+    AND(_, ':', _, EXPECT(easy_value, describe_easy)), //pair
+    GROUP(MORE(AND(_, '.', _, EXPECT(easy_value, describe_easy))), e => {
       return [syms.get, null].concat(e)
     }),
     EMPTY
@@ -78,7 +87,13 @@ var chain = JOIN_MUST('.', syms.get)
 value(pair, chain, quote, easy_value)
 */
 
-var root = AND(_, value, _)
+function EOF (input, start) {
+  if(start < input.length)
+    throw new Error('expected end of file, found:'+input.substring(start, start + 10))
+  else return {length: 0, groups: []}
+}
+
+var root = AND(_, value, _, EOF)
 
 module.exports = function (src) {
   var out = root(src, 0)

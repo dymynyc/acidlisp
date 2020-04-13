@@ -6,6 +6,20 @@ var {
 } = require('./util')
 var syms = require('./symbols')
 
+// just had an idea
+// so, this was easy to implement because I just used the js
+// stack. each thing is just a function and it calls eval
+// then that calls eval etc
+
+// but I was thinking, to get stacktraces, i'd need to keep track
+// of the stack myself... but then also, I realized, if I did
+// that, I could also incrementially expand an evaluation.
+// that means you could expand N operations, and then stop
+// (stopping if it's stuck in an infinite loop)
+// I was also thinking about this same thing for making a streaming
+// parser...
+// it would also allow you to do a step through debugger...
+
 function lookup (key, env) {
   if(isArray(key)) {
     if(key[0] !== syms.get) throw new Error('expected get symbol')

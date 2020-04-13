@@ -30,7 +30,15 @@ valid.forEach(function (e) {
 })
 invalid.forEach(function (e) {
   console.log('invalid:', e)
-  assert.throws(()=>parse(e), 'should not parse:'+e)
+  var passed = false
+  try {
+    parse(e)
+  } catch (err) {
+    passed = true
+    console.log(err)
+    assert.ok(err)
+  }
+  assert.ok(true)
 })
 
 var strings = [

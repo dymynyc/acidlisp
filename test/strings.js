@@ -17,10 +17,16 @@ var inputs = [
   '(compare "abc" "abb")',
   '(concat "hello" ", world")',
   '(slice "hi there" 1 4)',
+
+  '(equal_at "abc" 0 "abc" 0 3)',
+  '(equal_at "abc" 0 "abd" 0 3)',
+  '(equal_at "abc" 0 "abb" 0 2)',
+
 //  `(block
 //    (def hmyj "hello mellow yellow jello")
 //    (def hello (slice hmyj 0 5))
-//    {join [list hello hello hello
+//    {join [list
+//      hello hello hello
 //      (concat "h" (slice hmyj 10 12))
 //      (slice hmyj 9 12)] " "})`
 ]
@@ -46,31 +52,33 @@ var outputs = [
   1,
   Buffer.from('hello, world'),
   Buffer.from('i t'),
-  Buffer.from('hello hello hello how low')
+//  Buffer.from('hello hello hello how low'),
+  1,
+  0,
+  1
 ]
 
 inputs.forEach(function (v, i) {
   tape(inputs[i] + ' => '+JSON.stringify(outputs[i].toString()), t => {
-    t.equal(stringify(l6.eval(inputs[i])), stringify(outputs[i]), 'eval, correct output')
+    var value = l6.eval(inputs[i])
+    if('boolean' === typeof value)
+      t.equal(value, !!outputs[i], 'eval, correct output')
+    else
+      t.equal(stringify(value), stringify(outputs[i]), 'eval, correct output')
 
-//    var r = unroll(l6.eval(toModule(inputs[i]), env))
-//    console.log(compileWat(r))
     var m = toModule(inputs[i])
     try {
-    var fn = l6.wasm(m, env)
+      var fn = l6.wasm(m, env)
     } catch (e) {
       console.log(l6.wat(m, env))
       throw e
     }
     if(isBuffer(outputs[i])) {
       var ptr = fn()
-      console.log(fn.memory)
       t.deepEqual(readBuffer(fn.memory, ptr), outputs[i])
     }
     else
       t.equal(l6.wasm(m, env)(), outputs[i], 'wasm correct output')
-
-//    t.equal(l6.js_eval(toModule(inputs[i]), env)(), outputs[i], 'javascript correct output')
     t.end()
   })
 })

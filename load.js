@@ -32,7 +32,9 @@ if(!module.parent) {
   //convert to a relative path
   if(!/^\.\.?\//.test(file)) file = './'+file
 
-  if(opts.l6)
+  if(opts.parse)
+    console.log(stringify(l6.parse(fs.readFileSync(file, 'utf8'))))
+  else if(opts.l6)
     console.log(stringify(require('./unroll')(load(file))))
   else if(opts.js)
     console.log(l6.js(load(file)))

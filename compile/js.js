@@ -1,7 +1,7 @@
 var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound,
-  eqSymbol, equals, stringify
+  eqSymbol, equals, stringify, parseFun
 } = require('../util')
 
 function getDefs (ast, defs) {
@@ -74,14 +74,17 @@ exports.def = function ([key, value]) {
 
 exports.fun = function (_args) {
   _args = _args.slice(0)
-  var name = isSymbol(_args[0]) ? _args.shift() : null
-  var args = _args.shift()
-  var body = _args
-  var defs = getDefs(body[0])
+  var name, args, body
+  if(isSymbol(_args[0]))
+    name = _args[0], args = _args[1], body = _args[2]
+  else
+    name = null, args = _args[0], body = _args[1]
+
+  var defs = getDefs(body)
   return ('(function '+(name?name.description+' ':'') + '('+args.map(compile).join(', ')+') {\n'+
     //todo: extract defs, put them first.
     (defs.length ? 'var ' + defs.join(', ') + ';\n' : '') +
-    indent('return ' + compile(body[0])) +
+    indent('return ' + compile(body)) +
   '\n})')
 }
 
@@ -119,7 +122,15 @@ exports.or = function (args) {
 exports.lt = function ([a, b]) {
   return '(' + compile(a) + ' < ' + compile(b) +')'
 }
-
+exports.lte = function ([a, b]) {
+  return '(' + compile(a) + ' <= ' + compile(b) +')'
+}
+exports.gt = function ([a, b]) {
+  return '(' + compile(a) + ' > ' + compile(b) +')'
+}
+exports.gte = function ([a, b]) {
+  return '(' + compile(a) + ' >= ' + compile(b) +')'
+}
 exports.list = function (args) {
   return '[' + args.map(compile).join(', ') + ']'
 }

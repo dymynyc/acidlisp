@@ -24,12 +24,18 @@ function createImport (dir) {
 module.exports = createImport
 
 if(!module.parent) {
+  var opts = require('minimist')(process.argv.slice(2))
   var load = createImport(process.cwd())
   var file = process.argv[2]
   if(!file)
     return console.error('l6 {relative_path} > out.wat')
   //convert to a relative path
   if(!/^\.\.?\//.test(file)) file = './'+file
-//  console.log(stringify(require('./unroll')(load(file))))
-  console.log(l6.wat(load(file)))
+
+  if(opts.l6)
+    console.log(stringify(require('./unroll')(load(file))))
+  else if(opts.js)
+    console.log(l6.js(load(file)))
+  else
+    console.log(l6.wat(load(file)))
 }

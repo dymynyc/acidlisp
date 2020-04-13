@@ -34,7 +34,7 @@ var inputs = [
       (def rest (tail l))
 
       (if
-        (isEmpty rest)
+        (is_empty rest)
           [list (quote (fn value))]
         (block
           (def rest (quote (unroll rest fn)) )

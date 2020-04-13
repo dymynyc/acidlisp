@@ -7,6 +7,17 @@ var {
 var syms = require('./symbols')
 
 function lookup (key, env) {
+  if(isArray(key)) {
+    if(key[0] !== syms.get) throw new Error('expected get symbol')
+    if(key.length == 1) throw new Error('cannot eval get, no arguments:'+stringify(ast))
+    var value = env
+    for(var i = 1; i < key.length; i++) {
+      value = lookup(key[i], value)
+    }
+    if(!isDefined(value)) throw new Error('could not resolve:'+stringify(ast))
+    return value
+  }
+
   if(isArray(env))
     for(var i = env.length-1; i >= 0; i--)
       if(env[i][0].description === key.description) return env[i][1]
@@ -19,12 +30,16 @@ var core = {
   module: true, export: true
 }
 
+function isLookup(s) {
+  return isSymbol(s) || isArray(s) && s[0] === syms.get
+}
+
 function bind(ast, env) {
   var value
 
   if(isBasic(ast)) return ast
-  else if(isSymbol(ast)) {
-    if(core[ast.description])
+  else if(isLookup(ast)) {
+    if(isSymbol(ast) && core[ast.description])
       return ast
     else if(isDefined(value = lookup(ast, env))) {
       if(isFunction(value))
@@ -36,26 +51,18 @@ function bind(ast, env) {
       return ast
   //    throw new Error('strange symbol:'+String(ast))
   }
+  //an inline function literal, don't traverse inside it (?)
   else if(isFun(ast))
     return ast
   else if(!isArray(ast))
     throw new Error("should not happen. arrays only past this point, but was:" + stringify(ast))
+
   //bind macro defs, so that you can define (or import) a macro then use it.
   //also, this means macros can be exported.
-  //XXX this lookup should be more generic
   else if(ast[0] === syms.def && isSymbol(ast[1]) && isMac(ast[2])) {
     //def returning def value is consistent with eval. not sure if
     //thats the right way, but it doesn't break anything.
     return env[ast[1].description] = ast[2]
-  }
-  else if(ast[0] === syms.get) {
-    if(ast.length == 1) throw new Error('cannot eval get, no arguments:'+stringify(ast))
-    var value = env
-    for(var i = 1; i < ast.length; i++) {
-      value = lookup(ast[i], value)
-    }
-    if(!isDefined(value)) throw new Error('could not resolve:'+stringify(ast))
-    return value
   }
   else {
     var mac
@@ -106,6 +113,20 @@ function ev (ast, env) {
   //only arrays nows...
   if(isSymbol(ast[0])) {
     var symbol = ast[0]
+
+    //a block evaluates each expression and returns the last value
+    if(symbol === syms.block) {
+      for(var i = 1; i < ast.length; i++)
+        value = ev(ast[i], env)
+      return value
+    }
+
+    if(symbol === syms.quote) {
+      //bind will replace known symbols in the output.
+      //XXX maybe this isn't what you want?
+      return bind(ast[1], env)
+    }
+
     if(symbol === syms.def)
       return env[ast[1].description] = ev(ast[2], env)
 
@@ -150,13 +171,6 @@ function ev (ast, env) {
       return ast
     }
 
-    //a block evaluates each expression and returns the last value
-    if(symbol === syms.block) {
-      for(var i = 1; i < ast.length; i++)
-        value = ev(ast[i], env)
-      return value
-    }
-
     //XXX here, export is only allowed at the top level?
     // should export be allowed inside if?
     // I guess you can put an def in the if and export the reference.
@@ -181,12 +195,6 @@ function ev (ast, env) {
           ev(ast[i], env)
       }
       return exports
-    }
-
-    if(symbol === syms.quote) {
-      //bind will replace known symbols in the output.
-      //XXX maybe this isn't what you want?
-      return bind(ast[1], env)
     }
 
     value = lookup(symbol, env)

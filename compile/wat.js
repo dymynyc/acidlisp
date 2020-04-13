@@ -1,6 +1,6 @@
 var {
   isDefined, isSymbol, isArray, isBuffer,
-  isDef, isFun, isEmpty, isFunction, isNumber, isBound,
+  isDef, isFun, isEmpty, isFunction, isNumber, isBound, isString,
   eqSymbol, equals, stringify, traverse,
   getFunctions, getStrings,
   isExpressionTree,
@@ -10,8 +10,34 @@ var wasmString = require('wasm-string')
 
 var syms = require('../symbols')
 
+function isSingleLine(s) {
+  return !/\n/.test(s)
+}
+
+var line_length = 60
+function _w(name, args) {
+  var i = args.indexOf('\n')
+  var lines = args.split('\n').length
+  var close = lines > 20 ? '\n)' : ')'
+  if(name.length + args.length < line_length)
+    return '(' + name +' ' + args + ')'
+  else if(~i && i < line_length/2)
+    return '(' + name + ' ' + indent(args).trim() + close
+  else
+    return '(' + name + '\n' + indent(args) + close
+}
+
 function w(name, args) {
-  return '(' + name + ' ' + (isArray(args) ? args.join(' ') : args) + ')'
+  if(isArray(args)) {
+    var length = args.reduce((sum, a) => sum + a.length, 0)
+    return _w(name, args.join(
+      args.every(isSingleLine) && length < line_length ? ' ' : '\n'
+    ))
+  }
+
+  if(!isString(args))
+    args = args.toString()
+  return _w(name, args)
 }
 
 function isLiteral (ast) {
@@ -112,56 +138,53 @@ exports.module = function (ast) {
   })
   free = ptr //where the next piece of data should go
   var ref
-  return '(module\n' +
-    indent(
+  return w('module', [
+    w('memory', [w('export', '"memory"'), 1]) +
+    //a global variable that points to the start of the free data.
 
-      '(memory (export "memory") 1)\n\n' +
-      //a global variable that points to the start of the free data.
+    //data, literals (strings so far)
+    w('global', ['$FREE', w('mut', 'i32'), compile(free)]) + '\n',
+    w('data',
+      [0, w('offset', compile(0))].concat(
+      data.map((e, i) =>
+        toHex(e[0]) + '\n' +
+        ' ;; ptr='+pointers[i] + ', len=' + e[0].readUInt32LE(0) + '\n' +
+        wasmString.encode(e[1]))
+      ).join('\n')
+    ) + '\n',
 
-      //data, literals (strings so far)
-      '(global $FREE (mut i32) ' + compile(free)+')\n'+
-      '(data 0 (offset ' + compile(0)+')\n'+
-        indent(data.map((e, i) =>
-          toHex(e[0]) +
-          ' ;; ptr='+pointers[i] + ', len=' + e[0].readUInt32LE(0) + '\n' +
-          wasmString.encode(e[1])
-        ).join('\n'))
-      +')\n\n'+
+    //functions
+    funs.map((e, i) => exports.fun(e.slice(1))).join('\n\n') + '\n',
 
-      //functions
-      funs.map((e, i) => exports.fun(e.slice(1))).join('\n') +
-      '\n'+
-
-      //exports
-      ast.filter(e => e[0] === syms.export).map(e => {
-        if(isSymbol(e[1]) && e[2]) {// named export
-          ref = assertRef(e[2])
-          var export_name = e[1].description
-          return w('export', [JSON.stringify(export_name), w('func', fromRef(ref))])
-        }
-        else {
-          ref = assertRef(e[1])
-          var export_name = "main" //default export name if you only export one thing
-        }
+    //exports
+    ast.filter(e => e[0] === syms.export).map(e => {
+      if(isSymbol(e[1]) && e[2]) {// named export
+        ref = assertRef(e[2])
+        var export_name = e[1].description
         return w('export', [JSON.stringify(export_name), w('func', fromRef(ref))])
-      }).join('\n')
-    ) +
-  '\n)'
+      }
+      else {
+        ref = assertRef(e[1])
+        var export_name = "main" //default export name if you only export one thing
+      }
+      return w('export', [JSON.stringify(export_name), w('func', fromRef(ref))])
+    }).join('\n')
+  ])
 }
 
 exports.fun = function (ast) {
   ast = ast.slice(0)
   var defs = getDefs(ast)
-  var name = isSymbol(ast[0]) ? $(ast.shift())+' ' : ''
+  var name = isSymbol(ast[0]) ? $(ast.shift()) : ''
   var args = ast.shift()
   var body = ast
-  return '(func '+name + args.map(e => '(param $'+e.description+' i32)').join(' ') + '(result i32)\n'+
-      //TODO: extract local vars from body.
-      indent(
-          (defs.length ? defs.map(d => '(local '+$(d)+' i32)').join('\n')+'\n' : '') +
-          compile(body[0])
-        )+
-    ')\n'
+  return w('func', [name,
+    args.map(e => w('param', ['$'+e.description, 'i32']))
+    .join(' ') + ' ' + w('result', 'i32'),
+    //TODO: extract local vars from body.
+    (defs.length ? defs.map(d => '(local '+$(d)+' i32)').join('\n') : ''),
+    compile(body[0])
+  ])
 }
 
 exports.if = function ([test, then, e_then]) {

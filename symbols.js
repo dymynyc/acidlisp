@@ -1,6 +1,8 @@
 
 exports.block  = Symbol('block')
 exports.if     = Symbol('if')
+exports.and    = Symbol('and')
+exports.or     = Symbol('or')
 exports.loop   = Symbol('loop')
 exports.fun    = Symbol('fun')
 exports.mac    = Symbol('mac')

@@ -4,7 +4,8 @@ var unroll     = require('./unroll')
 var wat        = require('./compile/wat')
 var wat2wasm   = require('./wat2wasm')
 var js         = require('./compile/js')
-var env        = require('./env')
+var hydrate    = require('./hydrate')
+var createEnv  = require('./env')
 var {
   isString, isArray
 } = require('./util')
@@ -19,9 +20,13 @@ function envify(ary) {
   return _env
 }
 
-function evalIf(src, _env) {
-  _env = envify(_env||env)
-  return isString(src) ? ev(ev.bind(parse(src),  _env), _env) : src
+function defaultEnv () {
+  return createEnv(Buffer.alloc(0), {0:0})
+}
+
+function evalIf(src, env) {
+  env = envify(env || createEnv())
+  return isString(src) ? ev(ev.bind(hydrate(parse(src), env),  env), env) : src
 }
 exports.eval = evalIf
 
@@ -34,9 +39,11 @@ exports.js = function (src, env) {
 }
 
 exports.wat = function (src, env) {
-  return wat(unroll(evalIf(src, env)))
+  env = env || defaultEnv()
+  return wat(unroll(evalIf(src, env)), env)
 }
 
 exports.wasm = function (src, env) {
+  env = env || defaultEnv()
   return wat2wasm(exports.wat(src, env))
 }

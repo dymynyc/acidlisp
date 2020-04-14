@@ -42,21 +42,10 @@ function w(name, args) {
   return _w(name, args)
 }
 
-function isLiteral (ast) {
-  return (
-    isArray(ast) &&
-    ast[0] === syms.get &&
-    eqSymbol(ast[1], '$LITERALS$')
-  )
-}
-
 function getDefs (ast, defs) {
   defs = defs || {}
   if(isArray(ast) && isDef(ast[0]))
     defs[$(ast[1])] = true
-
-  else if(isLiteral(ast))
-    ; //ignore literals
   else if(isArray(ast))
     ast.forEach(a => getDefs(a, defs))
   return Object.keys(defs).map(k => Symbol(k))
@@ -84,10 +73,7 @@ function toHex (b) {
 //TODO: fix this pointers thing
 var pointers = []
 function compile (ast, isBlock) {
-  if(isLiteral(ast)) {
-    return compile(pointers[ast[2]], false)
-  }
-  else if(isArray(ast)) {
+  if(isArray(ast)) {
     //first, check if it's a core method
     var fn_name = ast[0]
     var fn = exports[fn_name.description]
@@ -106,12 +92,12 @@ function compile (ast, isBlock) {
     return w('local.get', $(ast))
   else
     throw new Error('cannot compile unsupported type:'+stringify(ast))
-  
+
   //hard coded strings will be encoded in a data section
 }
 
-exports = module.exports = function (ast, isBlock) {
-  return compile(ast)
+exports = module.exports = function (ast, env) {
+  return exports.module(ast, env)
 }
 
 function assertRef (r) {
@@ -128,18 +114,15 @@ function getLiterals (ast) {
   return []
 }
 
-exports.module = function (ast) {
+exports.module = function (ast, env) {
   var funs = getFunctions(ast)
   var literals = getLiterals(ast)
   var ptr = 0, free = 0
   pointers = []
-  var data = literals.map(function (e) {
-    pointers.push(ptr)
-    var b = Buffer.alloc(4)
-    b.writeUInt32LE(e.length, 0)
-    ptr += 4 + e.length
-    return [b, e]
-  })
+  var memory = env.memory
+  var free = env.globals[0]
+  data = memory.slice(0, free)
+
   free = ptr //where the next piece of data should go
   var ref
   return w('module', ['\n',
@@ -150,13 +133,8 @@ exports.module = function (ast) {
     w('global', ['$FREE', w('mut', 'i32'), compile(free)]),
     data.length &&
     w('data',
-      [0, w('offset', compile(0))].concat(
-      data.map((e, i) =>
-        toHex(e[0]) + '\n' +
-        ' ;; ptr='+pointers[i] + ', len=' + e[0].readUInt32LE(0) + '\n' +
-        wasmString.encode(e[1]))
-      ).join('\n')
-    ) + '\n' || '',
+      [0, w('offset', compile(0)), wasmString.encode(data)]
+    ) +'\n'|| '',
 
     //functions
     funs.map((e, i) => exports.fun(e.slice(1))).join('\n\n') + '\n',

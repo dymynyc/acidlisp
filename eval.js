@@ -28,7 +28,7 @@ function lookup (key, env) {
     for(var i = 1; i < key.length; i++) {
       value = lookup(key[i], value)
     }
-    if(!isDefined(value)) throw new Error('could not resolve:'+stringify(ast))
+    if(!isDefined(value)) throw new Error('could not resolve:'+stringify(key))
     return value
   }
 
@@ -80,8 +80,23 @@ function bind(ast, env) {
   }
   else {
     var mac
-    if(isSymbol(ast[0]) && core[ast[0].description])
-        return [ast[0]].concat(ast.slice(1).map(e => bind(e, env)))
+    if(isSymbol(ast[0]) && core[ast[0].description]) {
+
+      //okay this is getting messy.
+      if(ast[0] === syms.def) {
+        env[ast[1].description] = ast[1] //map local symbol back to itself
+        return [syms.def, ast[1], bind(ast[2], env)]
+      }
+// XXX uncommenting this breaks stuff, not sure why though.
+//      if(ast[0] === syms.export) {
+//        if(ast.length === 2) //single export
+//         return [syms.def, bind(ast[1], env)]
+//        else
+//         return [syms.def, ast[1], bind(ast[2], env)]
+//      }
+
+      return [ast[0]].concat(ast.slice(1).map(e => bind(e, env)))
+    }
     else if(isMac(mac = ast[0]) || isMac(mac = isSymbol(ast[0]) && lookup(ast[0], env))) {
       //will probably return a quote which is then bound (in eval)
       return call(mac, ast.slice(1).map(a => bind(a, env)), env)
@@ -114,6 +129,13 @@ function mapEv(list, env) {
 }
 
 function ev (ast, env) {
+  var result = _ev(ast, env)
+//  console.log(result, '<-', ast)
+  return result
+}
+
+function _ev (ast, env) {
+  
   var value
   if('undefined' === typeof ast) throw new Error('ast cannot be undefined')
   if(isBasic(ast))
@@ -141,9 +163,11 @@ function ev (ast, env) {
       return bind(ast[1], env)
     }
 
-    if(symbol === syms.def)
+    if(symbol === syms.def) {
+      if(!isSymbol(ast[1]))
+        throw new Error('cannot define non-symbol:'+stringify(ast))
       return env[ast[1].description] = ev(ast[2], env)
-
+    }
     if(symbol === syms.if)
       if(ev(ast[1], env))
         return ev(ast[2], env)
@@ -151,6 +175,19 @@ function ev (ast, env) {
         return ev(ast[3], env)
       else
         return null
+
+    if(symbol === syms.and) {
+      for(var i = 1; i < ast.length; i++)
+        if(!ev(ast[i], env)) return 0
+      return 1
+    }
+
+    if(symbol === syms.or) {
+      for(var i = 1; i < ast.length; i++)
+        if(ev(ast[i], env)) return 1
+      return 0
+    }
+
 
     if(symbol === syms.loop) {
         var test = ast[1]
@@ -173,9 +210,9 @@ function ev (ast, env) {
       //XXX assemble env so that function arguments are not replaced.
 
       if(isSymbol(name))
-        return [syms.fun, name, args, bind(body, env)]
+        return [syms.fun, name, args, bind(body, {__proto__: env})]
       else {
-        return [syms.fun, args, bind(body, env)]
+        return [syms.fun, args, bind(body, {__proto__: env})]
       }
     }
 
@@ -200,7 +237,7 @@ function ev (ast, env) {
           }
           else {
             if(single !== null)
-              throw new Error('already exported ' (single ? 'single' : 'multiple') + ' cannot export an additional single value')
+              throw new Error('already exported ' + (single ? 'single' : 'multiple') + ' cannot export an additional single value:'+stringify(ast))
             single = true
             exports = ev(ast[i][1], env)
           }

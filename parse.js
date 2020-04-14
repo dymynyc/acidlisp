@@ -96,10 +96,7 @@ function EOF (input, start) {
 var root = AND(_, value, _, EOF)
 
 module.exports = function (src) {
-  var out = root(src, 0)
-  if(out.length != src.length)
-    throw new Error('failed to parse fully:'+src)
-  return out.groups[0]
+  return root(src, 0).groups[0]
 }
 
 module.exports.string = string

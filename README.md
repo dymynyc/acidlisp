@@ -1,8 +1,15 @@
 # l6
 
-playing around with the idea of a macro based language.
+Playing around with the idea of a macro based language.
 I want it to feel like closures,
 but generate static functions that are fast and can be compiled to web assembly.
+
+## goals
+
+* no standard lib, everything is modules. published early, and independently versioned.
+* lightweight output. this should come naturally because it's targeted directly at wasm so there won't be a big runtime.
+* self hosting.
+* minimal code. it should be possible to understand the whole thing.
 
 ## usage
 
@@ -198,6 +205,23 @@ this won't work for recursion though, unless there is a way to convert recursion
 * cli args (output different formats)
 * type inference?
 
+## dev diary
+
+### 14/4/2020
+
+Just discovered a huge bug. I've been refactoring the js interpreter
+to behave more like wasm, to use pointers to strings, so that it
+can run tests on the same lib/strings module. But `concat` had a
+`(def i 4)` left in it (before I removed the iteration) and because
+the references to copy where being brought in, their variables
+were being bound as if it was a local definition! (THAT IS WRONG)
+it was binding `(def i 0)` to be `(def 4 0)` and also the `i`
+inside the loop... so it wasn't hitting the bounds. infinite loop!
+guess this is the sort of fun bug you get when you write a language!
+
+obviously the way I'm handling function references is totally wrong.
+a reference should not look like an inline. I got everything working
+I think I wanna go back to working on the parser and cycle back to this.
 
 ## License
 

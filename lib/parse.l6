@@ -1,0 +1,11 @@
+(module
+  (def strings (import "./strings"))
+  (def match (fun (expect)
+    (def e_len (strings.length expect))
+    [fun (input start)
+      (if (strings.equal_at input start expect 0 e_len)
+        e_len 0)]))
+
+  (def foo (match "foo"))
+  (export foo foo)
+)

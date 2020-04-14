@@ -159,85 +159,9 @@ exports.fromRef = function (ref) {
   return isRef(ref) ? +ref.description.substring(3) : ref
 }
 
-function traverse (tree, each_branch, each_leaf) {
-  if(isFunction(tree) && tree.source)
-    tree = tree.source
-  if(isArray(tree)) {
-    if(each_branch && false !== each_branch(tree))
-      tree.forEach(t => traverse(t, each_branch, each_leaf))
-  }
-  else if(each_leaf)
-      each_leaf(tree)
-}
-exports.traverse = traverse
-
-function id (e) { return e }
-
-function map (tree, branch, leaf) {
-  if(!leaf) leaf = id
-  if(isArray(tree)) {
-    var b = branch(tree)
-    if(isDefined(b)) return b
-    else
-      return tree.map(e => tree(e, branch, leaf))
-  }
-  else
-    return leaf(tree)
-}
-
-var keywords = {ref:true, def:true, fun:true}
-exports.freeVariables = function (fun) {
-  if(isFunction (fun))
-    fun = fun.source
-
-  var name, args, body
-  if(isSymbol(fun[1]))
-    name = fun[1], args = fun[2], body = fun.slice(3)
-  else
-    name = null, args = fun[1], body = fun.slice(2)
-
-  var vars = {}, free = {}
-  args.forEach(k => vars[k.description] = true)
-  traverse(body, function (branch) {
-    if(branch[0] === syms.def)
-      vars[branch[1].description] = true
-    else if(eqSymbol(branch[0], 'ref') && isFunction (branch[1]))
-      return false
-
-  }, function (leaf) {
-    if(isSymbol(leaf) && !keywords[leaf.description] && !vars[leaf.description])
-      free[leaf.description] = true
-  })
-  return Object.keys(free).map(k => Symbol(k))
-}
-
-exports.isRecursive = function (fun) {
-  if(isSymbol(fun[1])) {
-    name = fun[1], args = fun[2], body = fun.slice(3)
-  }
-  else
-    return false //can't be recursive without a self reference
-
-  //could a function use a self reference but not be recursive?
-  //or, a function could be passed a reference to it self, and be recursive that way?
-  //true... but it would need to be passed as a scope reference.
-  //higher order functions are a bit more suspect.
-  //higher order macros are safer because they can be expanded then statically analyzed.
-}
-
-//does a function take an argument that it then calls?
-exports.isHigherOrder = function (fun) {
-  if(isSymbol(fun[1]))
-    name = fun[1], args = fun[2], body = fun.slice(3)
-  else
-    name = null, args = fun[1], body = fun.slice(2)
-  var args = {}, higher = {}
-  _args.forEach(k => args[k.description] = true)
-
-  traverse(body, function (branch) {
-    if(isSymbol(branch[0]) && args[branch[0].description])
-      higher[branch[0].description] = true
-  })
+exports.readBuffer = function (memory, ptr) {
+  var len = memory.readUInt32LE(ptr)
+  return memory.slice(4+ptr, 4+ptr+len)
 }
 
 var isExpressionTree = exports.isExpressionTree = function (tree) {
@@ -251,21 +175,4 @@ var isExpressionTree = exports.isExpressionTree = function (tree) {
   ) return false
   else
     return tree.every(exports.isExpressionTree)
-}
-
-
-exports.inline = function (tree) {
-  var fn = tree[0]
-  var args = tree.slice(1)
-  var fn_args = isSymbol(fn[1]) ? fn[2] : fn[1]
-  var body    = isSymbol(fn[1]) ? fn[3] : fn[2]
-  var obj = {}
-  fn_args.forEach(function (k, i) {
-    obj[k.description] = args[i]
-  })
-  return (function map (body) {
-    if(isSymbol(body) && isDefined(obj[body.description])) return obj[body.description]
-    else if(isArray(body)) return body.map(map)
-    else return body //numbers, etc
-  })(body)
 }

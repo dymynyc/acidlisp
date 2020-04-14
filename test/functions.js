@@ -32,6 +32,7 @@ var outputs = [
 
 function makeTest(name, i, compiler) {
   tape(name+', compile functions:'+inputs[i], function (t) {
+//    var env = createEnv(Buffer.alloc(65536), {0:0})
     //console.log('input', i, inputs[i])
     var module = compiler(inputs[i])
     for(var j = 0; j < outputs[i].length; j ++) {
@@ -47,5 +48,5 @@ function makeTest(name, i, compiler) {
 }
 inputs.forEach(function (v, i) {
   makeTest('js', i, l6.js_eval)
-  makeTest('wasm', i, l6.wasm)
+//  makeTest('wasm', i, l6.wasm)
 })

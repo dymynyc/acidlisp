@@ -55,7 +55,7 @@
     (def len [sub (if end end (length str)) start])
     (def _str (mem.alloc (add len 4)))
     (i32_store _str len) ;;string starts with i32 of length
-    (def i 0) ;;(add _str 4))
+    (def i 0)
     (loop
       [lt i len]
       {block
@@ -80,7 +80,6 @@
   (export concat {fun (a b) [block
     (def len (add (length a) (length b)))
     (def c (mem.alloc (add 4 len)))
-    (def i 4)
     (i32_store c len)
     (copy a 0 (length a) c 0)
     (copy b 0 (length b) c (length a))

@@ -10,6 +10,7 @@ but generate static functions that are fast and can be compiled to web assembly.
 * lightweight output. this should come naturally because it's targeted directly at wasm so there won't be a big runtime.
 * self hosting.
 * minimal code. it should be possible to understand the whole thing.
+* all tools needed should be runnable in the browser!
 
 ## usage
 

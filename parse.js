@@ -1,5 +1,8 @@
 var string = require('wasm-string/stack-expression')
-var {AND,OR,MAYBE,MORE,MANY,FAIL,JOIN,RECURSE,GROUP,TEXT,EMPTY,EXPECT}  = require('stack-expression')
+var {
+  AND,OR,MAYBE,MORE,MANY,FAIL,JOIN,
+  RECURSE,GROUP,TEXT,EMPTY,EXPECT,EOF
+}  = require('stack-expression')
 
 //mandatory whitespace (includes ;; comments)
 var __ = /^(?:(?:\s)|(?:;;[^\n]*))+/
@@ -8,12 +11,6 @@ var __ = /^(?:(?:\s)|(?:;;[^\n]*))+/
 var _ = /^(?:(?:\s)|(?:;;[^\n]*))*/
 
 var value = RECURSE ()
-
-//function EXPECT (rule, name) {
-//  if('string' === typeof rule && !name)
-//    name = rule
-//  return OR(rule, FAIL('expected:'+name))
-//}
 
 var syms = require('./symbols')
 //note: json's value types already capture.
@@ -86,12 +83,6 @@ var chain = JOIN_MUST('.', syms.get)
 
 value(pair, chain, quote, easy_value)
 */
-
-function EOF (input, start) {
-  if(start < input.length)
-    throw new Error('expected end of file, found:'+input.substring(start, start + 10))
-  else return {length: 0, groups: []}
-}
 
 var root = AND(_, value, _, EOF)
 

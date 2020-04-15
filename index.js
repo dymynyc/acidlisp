@@ -20,10 +20,6 @@ function envify(ary) {
   return _env
 }
 
-function defaultEnv () {
-  return createEnv(Buffer.alloc(0), {0:0})
-}
-
 function evalIf(src, env) {
   env = envify(env || createEnv())
   return isString(src) ? ev(ev.bind(hydrate(parse(src), env),  env), env) : src
@@ -39,11 +35,11 @@ exports.js = function (src, env) {
 }
 
 exports.wat = function (src, env) {
-  env = env || defaultEnv()
+  env = env || createEnv()
   return wat(unroll(evalIf(src, env)), env)
 }
 
 exports.wasm = function (src, env) {
-  env = env || defaultEnv()
+  env = env || createEnv()
   return wat2wasm(exports.wat(src, env))
 }

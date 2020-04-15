@@ -1,8 +1,5 @@
 var {
-  isDefined, isSymbol, isArray,
-  isDef, isEmpty, isFunction, isNumber, isBound, isFun, isBuffer,
-  eqSymbol, equals, getFunctions, getStrings,
-  isExpressionTree, traverse, toRef
+  isArray, isFun, getFunctions, toRef
 } = require('./util')
 var syms = require('./symbols')
 
@@ -20,19 +17,6 @@ function remap (tree, funs) {
   })
 }
 
-var LITERALS = Symbol('$LITERALS$')
-
-function remapStrings(tree, strings) {
-  return tree.map(branch => {
-    if(isBuffer(branch))
-      return [syms.get, LITERALS, strings.indexOf(branch)]
-    else if(isArray(branch))
-      return remapStrings(branch, strings)
-    else
-      return branch
-  })
-}
-
 //UNROLL:
 // 0. evaluate the top level - binds closure vars, and calls setup functions, returns exports.
 // 1. traverse exports, collect all functions.
@@ -45,7 +29,6 @@ module.exports = function unroll (exports) {
   var funs = getFunctions(exports, []).reverse()
   //note: we don't need to worry about strings in import statements
   //because they should be evalled away by now
-  var strings = getStrings(exports, [])
   function createRef(fun) {
     return !isFun(fun) ? fun : toRef(funs.indexOf(fun))
   }
@@ -57,10 +40,7 @@ module.exports = function unroll (exports) {
     return [syms.def, toRef(i, fun), fun]
   })
 
-  def_funs = remapStrings(def_funs, strings)
-
   return [syms.module]
-    .concat([[syms.def, LITERALS, [Symbol('list')].concat(strings)]])
     .concat(def_funs)
     .concat(
       isFun(exports)

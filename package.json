@@ -8,8 +8,9 @@
     "url": "git://github.com/dominictarr/l6.git"
   },
   "dependencies": {
+    "hexpp": "^2.0.0",
     "minimist": "^1.2.5",
-    "stack-expression": "^1.4.1",
+    "stack-expression": "^1.5.0",
     "tape": "^4.13.2",
     "wasm-string": "^1.0.1"
   },

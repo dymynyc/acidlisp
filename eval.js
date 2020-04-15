@@ -80,10 +80,12 @@ function bind(ast, env) {
   }
   else {
     var mac
+    if(isSymbol(ast[0]) && ast[0] === syms.unquote)
+      return bind(ast[1], env)
     if(isSymbol(ast[0]) && core[ast[0].description]) {
 
       //okay this is getting messy.
-      if(ast[0] === syms.def) {
+      if(ast[0] === syms.def && isSymbol(ast[1])) {
         env[ast[1].description] = ast[1] //map local symbol back to itself
         return [syms.def, ast[1], bind(ast[2], env)]
       }

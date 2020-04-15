@@ -34,6 +34,7 @@ var list = OR(list_round, list_square, list_curly)
 var easy_value = OR(list, string, number, nil, boolean, sym)
 
 var quote = PREFIX("&", syms.quote)
+var unquote = PREFIX("$", syms.unquote)
 
 //morning thought: infix style?
 // (foo a b) -> a ~foo b
@@ -60,7 +61,7 @@ var shortcuts = GROUP(AND(easy_value, OR(
       return [e[0]].concat(e[1])
   })
 
-value(OR(quote, shortcuts))
+value(OR(quote, unquote, shortcuts))
 
 /*
 //this is what it used to be like!
@@ -81,6 +82,7 @@ function JOIN_MUST (separator, name) {
 var pair = PAIR(':')
 var chain = JOIN_MUST('.', syms.get)
 
+//just noticed this should be OR(pair...)
 value(pair, chain, quote, easy_value)
 */
 

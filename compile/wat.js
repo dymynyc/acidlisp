@@ -270,3 +270,8 @@ exports.set_global = function ([index, value]) {
 exports.get_global = function ([index, value]) {
   return w('global.get', index)
 }
+
+exports.fatal = function ([msg]) {
+  //todo: pass message back to user api?
+  return w('unreachable')
+}

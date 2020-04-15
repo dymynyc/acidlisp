@@ -58,6 +58,10 @@ module.exports = function (memory, globals, exports) {
     return +(a !== b)
   }
 
+  exports.fatal = function ([m]) {
+    throw new Error(m)
+  }
+
 /*
   exports.concat = function (args) {
     return Buffer.concat(args)

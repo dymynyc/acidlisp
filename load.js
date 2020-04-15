@@ -12,6 +12,7 @@ var {
 
 var fs = require('fs')
 function createImport (dir, env) {
+  if(!env) env = createEnv()
   return function (require) {
     if(Array.isArray(require)) require = require[0]
     if(Buffer.isBuffer(require))

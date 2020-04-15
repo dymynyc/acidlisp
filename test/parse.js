@@ -13,6 +13,8 @@ var valid = [
   'foo : bar',
   '(foo bar) : baz',
   '(&foo bar)',
+  '(&foo $bar)',
+  '(&foo $(add 1 2))',
   'foo.bar.baz',
   '(foo bar ;;comment \n baz)'
 ]

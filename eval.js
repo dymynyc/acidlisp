@@ -129,12 +129,6 @@ function mapEv(list, env) {
 }
 
 function ev (ast, env) {
-  var result = _ev(ast, env)
-//  console.log(result, '<-', ast)
-  return result
-}
-
-function _ev (ast, env) {
   
   var value
   if('undefined' === typeof ast) throw new Error('ast cannot be undefined')

@@ -197,18 +197,19 @@ function recurseOp(name) {
   }
 }
 
+function pairOp (name) {
+  return function ([a, b]) {
+    return w(name, [compile(a), compile(b)])
+  }
+}
+
 exports.add = recurseOp('i32.add')
 exports.sub = recurseOp('i32.sub')
 exports.mul = recurseOp('i32.mul')
 exports.div = recurseOp('i32.div_s')
 exports.and = recurseOp('i32.and')
 exports.or  = recurseOp('i32.or')
-
-function pairOp (name) {
-  return function ([a, b]) {
-    return w(name, [compile(a), compile(b)])
-  }
-}
+exports.mod = pairOp('i32.rem_s')
 
 exports.lt  = pairOp('i32.lt_s')
 exports.lte = pairOp('i32.le_s')
@@ -273,5 +274,5 @@ exports.get_global = function ([index, value]) {
 
 exports.fatal = function ([msg]) {
   //todo: pass message back to user api?
-  return w('unreachable')
+  return w('unreachable', [])
 }

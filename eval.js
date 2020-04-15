@@ -88,12 +88,13 @@ function bind(ast, env) {
         return [syms.def, ast[1], bind(ast[2], env)]
       }
 // XXX uncommenting this breaks stuff, not sure why though.
-//      if(ast[0] === syms.export) {
-//        if(ast.length === 2) //single export
-//         return [syms.def, bind(ast[1], env)]
-//        else
-//         return [syms.def, ast[1], bind(ast[2], env)]
-//      }
+
+      if(ast[0] === syms.export) {
+        if(ast.length === 2) //single export
+         return [syms.export, bind(ast[1], env)]
+        else
+         return [syms.export, ast[1], bind(ast[2], env)]
+      }
 
       return [ast[0]].concat(ast.slice(1).map(e => bind(e, env)))
     }
@@ -155,6 +156,11 @@ function ev (ast, env) {
       //bind will replace known symbols in the output.
       //XXX maybe this isn't what you want?
       return bind(ast[1], env)
+    }
+
+    //unquote is just eval!
+    if(symbol === syms.unquote) {
+      return ev(ast[1], env)
     }
 
     if(symbol === syms.def) {

@@ -2,7 +2,7 @@ var {isDefined} = require('./util')
 module.exports = function (memory, globals, exports) {
   exports = exports || {}
   memory = memory || Buffer.alloc(0)
-  globals = globals || {}
+  globals = globals || {0:0}
 
   exports.add = function (args) {
     var r = args.reduce((a,b) => a + b)

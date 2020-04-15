@@ -4,6 +4,7 @@ var {
   eqSymbol, equals,
   isExpressionTree
 } = require('./util')
+
 var syms = require('./symbols')
 
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
@@ -11,8 +12,6 @@ var syms = require('./symbols')
   // take everything-is-an-expression   //
  // and convert it to wasm statements. //
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-
- //var DEF = syms.def, IF = Symbol('if'), BLOCK = Symbol('block'), LOOP = Symbol('loop')
 
 function last (ary) {
   return ary[ary.length-1]
@@ -120,11 +119,7 @@ var flatten = module.exports = function flatten (tree, n) {
       )], $(m)]
   }
   else if (isSymbol(tree[0]) && /_store\d*$/.test(tree[0].description)) {
-    //console.log("FLATTEN STORE", tree)
-//    if(isExpressionTree(tree[2]))
-//      [syms.block, [tree[1], tree[2], insertDef(tree[3], n)], 
     var block = defaultFlatten(tree, n)
-  //  console.log('BLOCK', block)
     if(syms.block === block[0]) {
       var store = last(block)
       if(isSymbol(last(store)))
@@ -139,7 +134,6 @@ var flatten = module.exports = function flatten (tree, n) {
         block.push(ref)
       }
     }
-//    console.log("flattened", block)
     return block
   }
   else

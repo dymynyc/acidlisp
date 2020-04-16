@@ -15,6 +15,10 @@
     ]
   }})
 
+  (def defun (fun (name args body) {
+    ^(def name (fun name args body))
+  })
+
   ;; each on l until one fails
   ;; AND is similar to EVERY, evaluates until something fails.
   (def unroll_and {mac R (l v each) {block

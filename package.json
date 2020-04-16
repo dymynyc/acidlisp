@@ -2,10 +2,10 @@
   "name": "l6",
   "description": "",
   "version": "1.0.0",
-  "homepage": "https://github.com/dominictarr/l6",
+  "homepage": "https://github.com/dominictarr/acidlisp",
   "repository": {
     "type": "git",
-    "url": "git://github.com/dominictarr/l6.git"
+    "url": "git://github.com/dominictarr/acidlisp.git"
   },
   "dependencies": {
     "hexpp": "^2.0.0",

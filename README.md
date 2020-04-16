@@ -1,4 +1,4 @@
-# l6
+# Acid Lisp - _acid eats rust_
 
 Playing around with the idea of a macro based language.
 I want it to feel like closures,
@@ -16,15 +16,15 @@ but generate static functions that are fast and can be compiled to web assembly.
 
 you'll need to install the `wabt` tools.
 ```
-git clone https://github.com/dominictarr/l6
-cd l6
-./load.js path_to_l6_file > out.wat
+git clone https://github.com/dominictarr/acidlisp
+cd acidlisp
+./load.js path_to_al_file > out.wat
 wat2wasm out.wat #wat2wasm from wabt (web assembly binary tools)
 ```
 
 ## modules
 
-l6 has a module system inspired by node.js's. This is in my opinion
+`acid` has a module system inspired by node.js's. This is in my opinion
 a most underrated module system, mainly because it avoids the problem
 of version conflicts - you can simply have more than one version of
 the same thing! yes, this can make a larger output, but, that's
@@ -223,6 +223,14 @@ guess this is the sort of fun bug you get when you write a language!
 obviously the way I'm handling function references is totally wrong.
 a reference should not look like an inline. I got everything working
 I think I wanna go back to working on the parser and cycle back to this.
+
+### 17/4/2020
+
+I had been trying to think of a catchy name. I decided
+_acid lisp_ because it needs to some sort of joke.
+and acid eats rust. do I really think I can make a better
+language than rust? well I certainly think I can make a simpler
+one. it's good to set your sights high.
 
 ## License
 

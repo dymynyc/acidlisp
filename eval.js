@@ -89,6 +89,13 @@ function bind(ast, env) {
         env[ast[1].description] = ast[1] //map local symbol back to itself
         return [syms.def, ast[1], bind(ast[2], env)]
       }
+      else if(ast[0] === syms.set && isSymbol(ast[1])) {
+        env[ast[1].description] = ast[1] //map local symbol back to itself
+        return [syms.def, ast[1], bind(ast[2], env)]
+      }
+
+
+
 // XXX uncommenting this breaks stuff, not sure why though.
 
       if(ast[0] === syms.export) {
@@ -114,7 +121,7 @@ function bind(ast, env) {
 }
 
 function call (fun, argv, env) {
-  if(isFunction(fun)) return fun(argv, env)
+  if(isFunction(fun)) return fun.apply(null, argv, env)
 
   var {name, args, body} = parseFun(fun)
 
@@ -170,6 +177,12 @@ function ev (ast, env) {
         throw new Error('cannot define non-symbol:'+stringify(ast))
       return env[ast[1].description] = ev(ast[2], env)
     }
+    if(symbol === syms.set) {
+      if(!isSymbol(ast[1]))
+        throw new Error('cannot define non-symbol:'+stringify(ast))
+      return env[ast[1].description] = ev(ast[2], env)
+    }
+
     if(symbol === syms.if)
       if(ev(ast[1], env))
         return ev(ast[2], env)

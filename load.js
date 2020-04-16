@@ -1,5 +1,5 @@
 #! /usr/bin/env node
-var l6 = require('./')
+var acid = require('./')
 var path = require('path')
 var fs = require('fs')
 var createEnv = require('./env')
@@ -20,7 +20,7 @@ function createImport (dir, env) {
     else if(isNumber(require))
       require = readBuffer(env.memory, require).toString()
     var target = resolve(require, dir)
-    return l6.eval(fs.readFileSync(target, 'utf8'), {
+    return acid.eval(fs.readFileSync(target, 'utf8'), {
       import: createImport(path.dirname(target), env),
       __proto__: env
     })
@@ -35,16 +35,16 @@ if(!module.parent) {
   var load = createImport(process.cwd(), env)
   var file = process.argv[2]
   if(!file)
-    return console.error('l6 {relative_path} > out.wat')
+    return console.error('acid {relative_path} > out.wat')
   //convert to a relative path
   if(!/^\.\.?\//.test(file)) file = './'+file
 
   if(opts.parse)
-    console.log(stringify(l6.parse(fs.readFileSync(file, 'utf8'))))
-  else if(opts.l6)
+    console.log(stringify(acid.parse(fs.readFileSync(file, 'utf8'))))
+  else if(opts.acid)
     console.log(stringify(require('./unroll')(load(file))))
   else if(opts.js)
-    console.log(l6.js(load(file)), env)
+    console.log(acid.js(load(file)), env)
   else
-    console.log(l6.wat(load(file), env))
+    console.log(acid.wat(load(file), env))
 }

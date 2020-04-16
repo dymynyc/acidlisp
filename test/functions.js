@@ -1,6 +1,6 @@
 var tape = require('tape')
 var {stringify} = require('../util')
-var l6 = require('../')
+var acid = require('../')
 
 var env = {}
 
@@ -47,6 +47,6 @@ function makeTest(name, i, compiler) {
   })
 }
 inputs.forEach(function (v, i) {
-  makeTest('js', i, l6.js_eval)
-//  makeTest('wasm', i, l6.wasm)
+  makeTest('js', i, acid.js_eval)
+//  makeTest('wasm', i, acid.wasm)
 })

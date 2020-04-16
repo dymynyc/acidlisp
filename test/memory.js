@@ -1,5 +1,5 @@
 var tape = require('tape')
-var l6 = require('../')
+var acid = require('../')
 
 var basic = `
 (module
@@ -21,13 +21,13 @@ function testRandom(m, t) {
 }
 
 tape('basic, wasm', function (t) {
-  testRandom(l6.wasm(basic), t)
+  testRandom(acid.wasm(basic), t)
   t.end()
 })
 
 tape('basic, js', function (t) {
-  console.log(l6.js(basic))
-  testRandom(l6.js_eval(basic), t)
+  console.log(acid.js(basic))
+  testRandom(acid.js_eval(basic), t)
   t.end()
 })
 

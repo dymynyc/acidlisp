@@ -8,7 +8,7 @@ var wat2wasm = require('../wat2wasm')
 var stringify = require('../util').stringify
 var syms = require('../symbols')
 
-var l6 = require('../')
+var acid = require('../')
 
 //var flatten = require('../flatten')
 var env = {
@@ -49,14 +49,14 @@ inputs.forEach(function (_, i) {
 
 inputs.forEach(function (_, i) {
   tape('js:'+inputs[i] + ' => ' + outputs[i], function (t) {
-    t.equal(l6.js_eval(toModule(inputs[i]))(), outputs[i])
+    t.equal(acid.js_eval(toModule(inputs[i]))(), outputs[i])
     t.end()
   })
 })
 
 inputs.forEach(function (_, i) {
   tape('wat:'+inputs[i] + ' => ' + outputs[i], function (t) {
-    t.equal(l6.wasm(toModule(inputs[i]))(), outputs[i])
+    t.equal(acid.wasm(toModule(inputs[i]))(), outputs[i])
     t.end()
   })
 })

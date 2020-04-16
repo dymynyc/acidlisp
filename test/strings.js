@@ -1,4 +1,4 @@
-var l6          = require('../')
+var acid        = require('../')
 var tape        = require('tape')
 
 var syms        = require('../symbols')
@@ -43,12 +43,12 @@ var inputs = [
 ]
 
 function toFun (src) {
-  return stringify([syms.fun, [], l6.parse(src)])
+  return stringify([syms.fun, [], acid.parse(src)])
 }
 
 function toModule (src) {
   return stringify([syms.module,
-    [syms.export, [syms.fun, [], l6.parse(src)]]])
+    [syms.export, [syms.fun, [], acid.parse(src)]]])
 }
 
 var outputs = [
@@ -83,9 +83,9 @@ inputs.forEach(function (v, i) {
 
     var m = toModule(inputs[i])
     try {
-      var fn = l6.wasm(m, env)
+      var fn = acid.wasm(m, env)
     } catch (e) {
-      l6.wat(m, env)
+      acid.wat(m, env)
       throw e
     }
     if(isBuffer(outputs[i])) {

@@ -9,7 +9,7 @@ var syms = require('../symbols')
 var compileWat = require('../compile/wat')
 var wat2wasm = require('../wat2wasm')
 
-var l6 = require('../')
+var acid = require('../')
 
 var env = {
   a: 7, b: 0, d: 0, e: 0, f: 1,
@@ -111,14 +111,14 @@ inputs.forEach(function (_, i) {
 
 inputs.forEach(function (_, i) {
   tape('js:'+inputs[i] + ' => ' + expected[i], function (t) {
-    t.equal(l6.js_eval(toModule(inputs[i])).apply(null, values), expected[i])
+    t.equal(acid.js_eval(toModule(inputs[i])).apply(null, values), expected[i])
     t.end()
   })
 })
 
 inputs.forEach(function (_, i) {
   tape('wat:'+inputs[i] + ' => ' + expected[i], function (t) {
-    t.equal(l6.wasm(toModule(inputs[i])).apply(null, values), expected[i])
+    t.equal(acid.wasm(toModule(inputs[i])).apply(null, values), expected[i])
     t.end()
   })
 })

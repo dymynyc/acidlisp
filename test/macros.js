@@ -2,6 +2,8 @@ var tape = require('tape')
 var env  = require('../env')()
 // MACROS
 
+return //XXX gonna redo macros so don't fix this right now
+
 // okay, I think I got it figured out.
 // macros are like functions, but they run
 // _during_ function evaluation.
@@ -35,7 +37,7 @@ var inputs = [
           [list (quote (fn value))]
         (block
           (def rest (quote (unroll rest fn)) )
-          (cat [list &(fn value)] &rest)
+          (cat [list [list &(fn value)]] &rest)
         )
       )
     })

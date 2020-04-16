@@ -12,9 +12,9 @@ var l6 = require('../')
 
 //var flatten = require('../flatten')
 var env = {
-  add: function ([a, b]) { return a + b },
-  sub: function ([a, b]) { return a - b },
-  lt:  function ([a, b]) { return a < b }
+  add: function (a, b) { return a + b },
+  sub: function (a, b) { return a - b },
+  lt:  function (a, b) { return a < b }
 }
 
 var inputs = [

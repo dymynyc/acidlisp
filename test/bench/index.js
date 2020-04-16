@@ -1,6 +1,6 @@
 
-var load = require('../load')(__dirname)
-var l6 = require('../')
+var load = require('../../load')(__dirname)
+var l6 = require('../..')
 
 var m = l6.wasm(load('./bench'))
 console.log(m)

@@ -13,9 +13,9 @@ var l6 = require('../')
 
 var env = {
   a: 7, b: 0, d: 0, e: 0, f: 1,
-  and: ([a]) => a & 1,
-  add: ([a, b])=> a + b,
-  lt: ([a, b]) => a < b
+  and: (a) => a & 1,
+  add: (a, b)=> a + b,
+  lt:  (a, b) => a < b
 }
 
 var inputs = [

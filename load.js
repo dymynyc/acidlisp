@@ -4,7 +4,7 @@ var path = require('path')
 var fs = require('fs')
 var createEnv = require('./env')
 var resolve = require('./resolve')(
-  'node_modules', '.l6', JSON.parse, 'package.json'
+  'node_modules', '.al', JSON.parse, 'package.json'
 )
 var {
   stringify,isBuffer,isNumber,readBuffer

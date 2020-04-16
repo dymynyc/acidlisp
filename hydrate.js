@@ -1,7 +1,7 @@
 var fs = require('fs')
 var path = require('path')
 var parse = require('./parse')
-var mem_ast = parse(fs.readFileSync(path.join(__dirname, 'lib', 'memory.l6'), 'utf8'))
+var mem_ast = parse(fs.readFileSync(path.join(__dirname, 'lib', 'memory.al'), 'utf8'))
 var ev = require('./eval')
 var wrap = require('./wrap')
 var {isBuffer, isArray} = require('./util')

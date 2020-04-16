@@ -5,14 +5,6 @@ var {
 var ev = require('./eval')
 var syms = require('./symbols')
 
-//we have a separate call function defined here,
-//because we are calling _from_ javascript land
-//where the arguments are already evaluated.
-//function call (fun, argv, _env) {
-//  var {name, args, body} = parseFun(fun)
-//  return ev(body, toEnv(args, argv, _env))
-//}
-
 function wrapFn (fun, env) {
   return function () {
     return ev.call(fun, [].slice.call(arguments), env)

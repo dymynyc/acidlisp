@@ -33,8 +33,6 @@ function call (m, fn, args) {
     i += 4 + e.length
     return _i
   })
-//  console.log(args)
-//  console.log(memory)
   return fn.apply(null, args)
 }
 

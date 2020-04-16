@@ -8,11 +8,11 @@ module.exports = function (MODULES, EXT, PARSE, PKG) {
   var basedir_warn = false
 
   function loadFrom(moduleFile) {
-    //if it's a directory, load index.l6
+    //if it's a directory, load index{EXT}
     //if it's not, assume it's a file. so just append the correct extention.
 
     //if module name includes extention, just load exactly that.
-    //if the extention is not .l6 then load it as _data_.
+    //if the extention is not EXT then load it as _data_.
     //it will produce a single statically bound wasm bundle.
     //note: wasm data sections wat format is a string,
     //but can do \hh hex format escapes.

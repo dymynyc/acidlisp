@@ -94,10 +94,6 @@ function bind(ast, env) {
         return [syms.def, ast[1], bind(ast[2], env)]
       }
 
-
-
-// XXX uncommenting this breaks stuff, not sure why though.
-
       if(ast[0] === syms.export) {
         if(ast.length === 2) //single export
          return [syms.export, bind(ast[1], env)]

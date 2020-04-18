@@ -51,11 +51,13 @@ function unroll (fun, funs, key) {
   return funs
 }
 
-function unbind (fun) {
+function unbind (fun, k) {
   if(fun[1]) //named
     return [syms.fun, fun[1], fun[2], fun[3]]
-  else //anon
-    return [syms.fun, fun[2], fun[3]]
+  else if(k)
+    //TODO if the function is recursive, replace internal name for itself.
+    //this is necessary for inline functions.
+    return [syms.fun, k, fun[2], fun[3]]
 
 }
 
@@ -66,7 +68,7 @@ module.exports = function (funs) {
     return [syms.module]
       .concat(
         Object.keys(funs).reverse()
-        .map(k=>[syms.def, Symbol(k), unbind(funs[k])]))
+        .map(k=>[syms.def, Symbol(k), unbind(funs[k], Symbol(k))]))
       .concat([[syms.export, Symbol(find(funs, fun))]])
   }
   else {

@@ -13,11 +13,16 @@ var {
 function isBoundMac (m) {
   return isArray(m) && boundm === m[0]
 }
+function isBoundFun (f) {
+  return isArray(f) && boundf === f[0]
+}
 
 function bind (body, scope) {
   if(Array.isArray(body)) {
     if(body[0] === syms.mac)
       return bind_mac(body, scope)
+    if(body[0] === syms.fun)
+      return bind_fun(body, scope)
     else  if(body[0] === syms.quote)
       return quote(body, scope)
     else if(body[0] === syms.unquote) {
@@ -64,14 +69,14 @@ function call (fn, argv) {
     throw new Error('args was wrong:' + stringify([name, args, body]))
   for(var i = 0; i < args.length; i++)
     scope[args[i].description] = argv[i]
-
   return ev(body, scope)
 }
 
 function ev(ast, scope) {
   var value
-  if(isFun(ast))
+  if(isFun(ast)) {
     return bind_fun(ast, scope)
+  }
   if(isMac(ast))
     return bind_mac(ast, scope)
 
@@ -99,14 +104,43 @@ function ev(ast, scope) {
     if(ast[0] === syms.list)
       return ast.slice(1).map(v => ev(v, scope))
 
-    var bf = ev(ast[0], scope)
+    //XXX here, export is only allowed at the top level?
+    // should export be allowed inside if?
+    // I guess you can put an def in the if and export the reference.
+    if(ast[0] === syms.module) {
+      var exports = [], single = null
+      for(var i = 1; i < ast.length; i++) {
+        if(isArray(ast[i]) && ast[i][0] === syms.export) {
+          if(isSymbol(ast[i][1]) && ast[i].length == 3) {
+            if(single === true)
+              throw new Error('already exported a single symbol, cannot export multiple')
+            single = false
+            exports.push([ast[i][1], ev(ast[i][2], scope)])
+          }
+          else {
+            if(single !== null)
+              throw new Error('already exported ' + (single ? 'single' : 'multiple') + ' cannot export an additional single value:'+stringify(ast))
+            single = true
+            exports = ev(ast[i][1], scope)
+          }
+        }
+        else
+          ev(ast[i], env)
+      }
+      return exports
+    }
+
+    if(isBoundFun(ast[0]) || isFunction(ast[0]) || isBoundMac(ast[0]))
+      bf = ast[0]
+    else
+      bf = ev(ast[0], scope)
+
     if(isBoundMac(bf))
       return ev(call(bf, ast.slice(1)), scope)
+    if(isBoundFun(bf) || isFunction(bf))
+      return call(bf, ast.slice(1).map(v => ev(v, scope)))
 
-    if(!bf)
-      throw new Error('expected function:'+stringify(ast))
-
-    return call(bf, ast.slice(1).map(v => ev(v, scope)))
+    throw new Error('expected function:'+stringify(ast))
   }
   else if(isBasic(ast))  return ast
   else if(isSymbol(ast)) return lookup(scope, ast)
@@ -134,7 +168,9 @@ function quote (ast, scope) {
 
   return ast
 }
-
+exports = module.exports = ev
 exports.eval = ev
 exports.quote = quote
 exports.bind = bind
+exports.isBoundMac = isBoundMac
+exports.isBoundFun = isBoundFun

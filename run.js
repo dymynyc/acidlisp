@@ -1,5 +1,4 @@
 var fs = require('fs')
-var hexpp = require('hexpp')
 var {
   isFunction, isNumber, readBuffer
 } = require('./util')
@@ -9,11 +8,13 @@ function loadWat(file) {
   var m = new WebAssembly.Module(wasm)
   var instance = new WebAssembly.Instance(m)
   if(instance.exports.main) {
-    instance.exports.main.memory = Buffer.from(instance.exports.memory.buffer)
+    if(instance.exports.memory)
+      instance.exports.main.memory = Buffer.from(instance.exports.memory.buffer)
     return instance.exports.main
   }
   else {
-    instance.exports.memory = Buffer.from(instance.exports.memory.buffer)
+    if(instance.exports.memory)
+      instance.exports.memory = Buffer.from(instance.exports.memory.buffer)
     return instance.exports
   }
 }
@@ -23,7 +24,8 @@ function toArgs (args) {
 
 function call (m, fn, args) {
   var i = 128
-  var memory = Buffer.from(m.memory.buffer)
+  if(m.memory)
+    var memory = Buffer.from(m.memory.buffer)
   args = args.map(e => {
     if(!isNaN(+e)) return +e
     var b = Buffer.from(e)
@@ -49,7 +51,6 @@ if(!module.parent) {
   var cmd = opts._.shift()
   if(isFunction(m[cmd])) {
     console.log(call(m, m[cmd], opts._))
-    console.log(hexpp(Buffer.from(m.memory.buffer.slice(0, 256))))
     return
   }
   else {

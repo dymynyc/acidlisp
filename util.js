@@ -118,23 +118,20 @@ exports.toEnv = function (args, argv, _env) {
 }
 
 function indent(s) {
-//  if(s.length < 40)
-//    return s.replace(/\s+/g, ' ')
-//  else
     return s.split('\n').map(line => '  ' + line).join('\n')
 }
 
 function stringify_list (l) {
-  var len = 0
   var s = '('
   for(var i = 0; i < l.length; i++) {
-    if(s.length + l[i].length< 40)
-      s += l[i] + ' '
+    var item = pretty(l[i])
+    if(s.length + item.length < 40)
+      s += item + ' '
     else
-      s += '\n' + indent(l[i])
+      s += '\n' + indent(item)
   }
 
-  return s.trim() + (s.length > 80 ? '\n)' : ')')
+  return s.trim() + (s.split('\n').length > 5 ? '\n)' : ')')
 }
 
 function stringify (s) {
@@ -147,7 +144,7 @@ function stringify (s) {
 
 function pretty (s) {
  if(isBuffer(s)) return wasmString.encode(s)
-  if(isArray(s)) return stringify_list(s.map(stringify))
+  if(isArray(s)) return stringify_list(s)
   if(isSymbol(s)) return s.description
   if(isFunction(s)) return indent(stringify(s.source))
   return JSON.stringify(s)

@@ -6,9 +6,19 @@ function find(obj, fn) {
     if(obj[k] === fn) return k
 }
 
+function toObj(ary) {
+  if(!isArray(ary)) return ary
+  var obj = {}
+  for(var i = 0; i < ary.length; i++)
+    obj[ary[i][0].description] = ary[i][1]
+  return obj
+}
+
 function unroll (fun, funs, key) {
   funs = funs || {}
   if(fun == null) {
+    funs = toObj(funs)
+    console.log('funs', funs)
     for(var k in funs)
       unroll(funs[k], funs, k)
     return funs
@@ -21,7 +31,6 @@ function unroll (fun, funs, key) {
     )
   }
   funs[getName()]= fun
-
   var body = fun[3]
   if(isBoundFun(body)) {
     if(k = find(funs, body)) fun[3] = k
@@ -31,6 +40,7 @@ function unroll (fun, funs, key) {
 
   var scope = fun[4]
   ;(function R (ast) {
+    console.log("R", ast)
     if(isBoundFun(ast[0])) {
       if(k = find(funs, ast[0])) ast[0] = k
       else {
@@ -52,13 +62,15 @@ function unroll (fun, funs, key) {
 }
 
 function unbind (fun, k) {
+  console.log('UNBIND', k, fun)
   if(fun[1]) //named
     return [syms.fun, fun[1], fun[2], fun[3]]
   else if(k)
     //TODO if the function is recursive, replace internal name for itself.
     //this is necessary for inline functions.
     return [syms.fun, k, fun[2], fun[3]]
-
+  else
+    throw new Error('function key not provided')
 }
 
 module.exports = function (funs) {
@@ -72,16 +84,16 @@ module.exports = function (funs) {
       .concat([[syms.export, Symbol(find(funs, fun))]])
   }
   else {
+    funs = toObj(funs)
     var initial = {}
     for(var k in funs)
       initial[k] = funs[k]
     funs = unroll(null, funs)
-
+    console.log(funs)
     return [syms.module]
       .concat(
         Object.keys(funs).reverse()
-        .filter(k=> funs[k] !== initial[k])
-        .map(k=>[syms.def, Symbol(k), unbind(funs[k])])
+        .map(k=>[syms.def, Symbol(k), unbind(funs[k], Symbol(k))])
       )
       .concat(
         Object.keys(initial)

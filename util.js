@@ -117,18 +117,44 @@ exports.toEnv = function (args, argv, _env) {
   return env
 }
 
-function stringify (s, env) {
-  if(isArray(s) && isSymbol(s[0]) && eqSymbol(s[0], 'ref'))
-    return isFunction (s[1]) ? stringify(s[2]) : s[1]
+function indent(s) {
+//  if(s.length < 40)
+//    return s.replace(/\s+/g, ' ')
+//  else
+    return s.split('\n').map(line => '  ' + line).join('\n')
+}
+
+function stringify_list (l) {
+  var len = 0
+  var s = '('
+  for(var i = 0; i < l.length; i++) {
+    if(s.length + l[i].length< 40)
+      s += l[i] + ' '
+    else
+      s += '\n' + indent(l[i])
+  }
+
+  return s.trim() + (s.length > 80 ? '\n)' : ')')
+}
+
+function stringify (s) {
   if(isBuffer(s)) return wasmString.encode(s)
   if(isArray(s)) return '(' + s.map(stringify).join(' ') + ')'
   if(isSymbol(s)) return s.description
-  if(isFunction(s)) return stringify(s.source)
+  if(isFunction(s)) return indent(stringify(s.source))
+  return JSON.stringify(s)
+}
+
+function pretty (s) {
+ if(isBuffer(s)) return wasmString.encode(s)
+  if(isArray(s)) return stringify_list(s.map(stringify))
+  if(isSymbol(s)) return s.description
+  if(isFunction(s)) return indent(stringify(s.source))
   return JSON.stringify(s)
 }
 
 exports.stringify = stringify
-
+exports.pretty = pretty
 function getThings (tree, isThing, things) {
   things = things || []
   ;(function maybe(it) {

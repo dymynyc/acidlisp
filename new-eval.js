@@ -17,7 +17,39 @@ function isBoundFun (f) {
   return isArray(f) && boundf === f[0]
 }
 
+function isCore (c) {
+  return syms[c.description] === c
+}
+
+//inline scoped vars, but don't overwrite arguments
+//or locally defined vars
+function rebind(fn, scope) {
+  scope = {__proto__: scope}
+  function _rebind (ast) {
+    if(
+      isSymbol(ast) && !isCore(ast) &&
+      isBasic(value = lookup(scope, ast, false))
+    )
+      return value
+    else if(isArray(ast)) {
+      if(ast[0] === syms.def) {
+        scope[ast[1].description] = ast[1]
+        return [ast[0], ast[1], _rebind(ast[2])]
+      }
+      return ast.map(_rebind)
+    }
+    else
+      return ast
+  }
+  var args = fn[2]
+  for(var i = 0; i < args.length; i++)
+    scope[args[i].description] = args[i]
+
+  return [fn[0], fn[1], fn[2], _rebind(fn[3]), fn[4]]
+}
+
 function bind (body, scope) {
+  var value
   if(Array.isArray(body)) {
     if(body[0] === syms.mac)
       return bind_mac(body, scope)
@@ -28,8 +60,7 @@ function bind (body, scope) {
     else if(body[0] === syms.unquote) {
       return ev(body[1], scope)
     }
-
-    if(isSymbol(body[0]) && !syms[body[0].description] && isBoundMac(value = lookup(scope, body[0]))) {
+    if(isSymbol(body[0]) && !syms[body[0].description] && isBoundMac(value = lookup(scope, body[0], false))) {
       return call(value, body.slice(1))
     }
 
@@ -39,6 +70,8 @@ function bind (body, scope) {
     else
       return [bm].concat(body.slice(1).map(b => bind(b, scope)))
   }
+  else if(isSymbol(body) && isBasic(value = lookup(scope, body, false)))
+    return value
   return body
 }
 
@@ -52,8 +85,8 @@ function bind_mac (mac, scope) {
   return [boundm, name, args, body, scope]
 }
 
-function lookup(scope, sym) {
-  if(!isDefined(scope[sym.description]))
+function lookup(scope, sym, doThrow) {
+  if(!isDefined(scope[sym.description]) && doThrow !== false)
     throw new Error('cannot resolve symbol:'+String(sym))
   return scope[sym.description]
 }
@@ -74,8 +107,9 @@ function call (fn, argv) {
 
 function ev(ast, scope) {
   var value, env = scope
-  if(isBoundFun(ast)) return ast
-  if(isBoundMac(ast)) return ast
+  //if we encounter a inline function, bind that are in scope.
+  if(isBoundFun(ast)) return rebind(ast, scope)
+  if(isBoundMac(ast)) return rebind(ast, scope)
   if(isFun(ast))      return bind_fun(ast, scope)
   if(isMac(ast))      return bind_mac(ast, scope)
   if(Array.isArray(ast)) {
@@ -126,6 +160,7 @@ function ev(ast, scope) {
     if(ast[0] === syms.module) {
       var exports = [], single = null
       for(var i = 1; i < ast.length; i++) {
+        console.log("M", i, ast[i])
         if(isArray(ast[i]) && ast[i][0] === syms.export) {
           if(isSymbol(ast[i][1]) && ast[i].length == 3) {
             if(single === true)
@@ -141,7 +176,7 @@ function ev(ast, scope) {
           }
         }
         else
-          ev(ast[i], env)
+          ev(ast[i], scope)
       }
       return exports
     }

@@ -3,6 +3,10 @@ var wasmString = require('wasm-string')
 
 var isArray = Array.isArray
 
+function isObject(o) {
+  return o && 'object' === typeof o && !isArray(o)
+}
+
 function isDefined(d) {
   return 'undefined' !== typeof d
 }
@@ -91,6 +95,12 @@ exports.isBound    = isBound
 exports.eqSymbol   = eqSymbol
 exports.equals     = equals
 
+exports.clone = function clone (ast) {
+  if(Array.isArray(ast))
+    return ast.map(clone)
+  return ast
+}
+
 function parseFun (fun) {
   if(fun.length < 3 || fun.length > 4) {
     throw new Error('incorrect length of fun expression:'+stringify(mac))
@@ -147,6 +157,12 @@ function pretty (s) {
   if(isArray(s)) return stringify_list(s)
   if(isSymbol(s)) return s.description
   if(isFunction(s)) return indent(stringify(s.source))
+  if(isObject(s)) {
+    var s = '{\n'
+      for(var k in s)
+        s += '  ' +k +':\n' + indent(pretty(s[k]))
+    return s.trim() + '}'
+  }
   return JSON.stringify(s)
 }
 

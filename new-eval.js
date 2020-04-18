@@ -73,13 +73,13 @@ function call (fn, argv) {
 }
 
 function ev(ast, scope) {
-  var value
-  if(isFun(ast)) {
-    return bind_fun(ast, scope)
-  }
-  if(isMac(ast))
-    return bind_mac(ast, scope)
+  var value, env = scope
+  if(isBoundFun(ast)) return ast
+  if(isBoundMac(ast)) return ast
+  if(isFun(ast))      return bind_fun(ast, scope)
+  if(isMac(ast))      return bind_mac(ast, scope)
   if(Array.isArray(ast)) {
+    var symbol = ast[0]
     if(ast[0] === syms.block) {
       for(var i = 1; i < ast.length; i++)
         value = ev(ast[i], scope)
@@ -109,6 +109,16 @@ function ev(ast, scope) {
       else if(ast.length > 2)
         return ev(ast[3], scope)
     }
+
+    if(symbol === syms.loop) {
+        var test = ast[1]
+        var body = ast[2]
+        while(ev(test, env)) {
+          value = ev(body, env)
+        }
+        return value
+      }
+
 
     //XXX here, export is only allowed at the top level?
     // should export be allowed inside if?

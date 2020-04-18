@@ -79,7 +79,6 @@ function ev(ast, scope) {
   }
   if(isMac(ast))
     return bind_mac(ast, scope)
-
   if(Array.isArray(ast)) {
     if(ast[0] === syms.block) {
       for(var i = 1; i < ast.length; i++)
@@ -103,6 +102,13 @@ function ev(ast, scope) {
 
     if(ast[0] === syms.list)
       return ast.slice(1).map(v => ev(v, scope))
+
+    if(ast[0] === syms.if) {
+      if(ev(ast[1], scope))
+        return ev(ast[2], scope)
+      else if(ast.length > 2)
+        return ev(ast[3], scope)
+    }
 
     //XXX here, export is only allowed at the top level?
     // should export be allowed inside if?

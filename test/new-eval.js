@@ -251,12 +251,9 @@ tape('unroll', function (t) {
 
   var syms = require('../symbols')
   var unrolled = unroll(result)
-  unrolled.forEach(function (e) {
-    if(syms.def === e[0] && isFun(e[2]))
-      e[2][e[2].length-1] = flatten(e[2][e[2].length-1])
-  })
   var Wat = require('../compile/wat')
-  t.equal(require('../wat2wasm')(Wat(unrolled))(4), 36)
+  var wat = Wat(unrolled)
+  t.equal(require('../wat2wasm')(wat)(4), 36)
 
   t.end()
 })

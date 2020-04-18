@@ -73,6 +73,7 @@ function toHex (b) {
 }
 
 function toName(fn_name) {
+  if(!isSymbol(fn_name)) throw new Error('name is not symbol:' + stringify(fn_name))
   return isRef(fn_name) ? fromRef(fn_name) : '$'+fn_name.description
 }
 

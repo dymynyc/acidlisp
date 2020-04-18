@@ -1,9 +1,10 @@
 var assert = require('assert')
 var tape = require('tape')
-var {eval: ev, quote, bind} = require('../new-eval')
+var {eval: ev, quote, bind, isBoundFun} = require('../new-eval')
 var syms = require('../symbols')
 var parse = require('../parse')
-var {isNumber, stringify} = require('../util')
+var {isNumber, stringify, pretty, isArray} = require('../util')
+var unroll = require('../new-unroll')
 
 var {
   isSymbol, isFun, isBasic, isFunction, isArray, stringify
@@ -230,5 +231,27 @@ tape('if a macro creates a var does not collide', function (t) {
   var _scope = {swapsies: _swap, __proto__: scope}
   t.deepEqual(ev([swapsies, 0], _scope), [2,1,7])
 
+  t.end()
+})
+
+tape('unroll', function (t) {
+  var src = `
+  (block
+    (def defun (mac (name args body)
+      &(def $name (fun $name $args $body))
+    ))
+    (defun foo (a) {add a a a})
+    (defun foofoo (b) {foo {foo b}})
+    ;; a function that has a inline function and a reference!
+    (defun bar (x) [{fun (y) [foofoo y]} x])
+  )`
+  var ast = parse(src)
+  console.log(ast)
+  var result = ev(ast, scope)
+  console.log(result)
+  console.log(ev([result, 5],scope))
+
+//  console.log(result)
+  console.log(pretty(unroll(result)))
   t.end()
 })

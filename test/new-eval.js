@@ -5,6 +5,7 @@ var syms = require('../symbols')
 var parse = require('../parse')
 var {isNumber, stringify, pretty, isArray} = require('../util')
 var unroll = require('../new-unroll')
+var flatten = require('../flatten')
 
 var {
   isSymbol, isFun, isBasic, isFunction, isArray, stringify
@@ -243,7 +244,7 @@ tape('unroll', function (t) {
     (defun foo (a) {add a a a})
     (defun foofoo (b) {foo {foo b}})
     ;; a function that has a inline function and a reference!
-    (defun bar (x) [{fun (y) [foofoo y]} x])
+    (defun bar (x) [{fun (y) [if y (foofoo y) (foo y)]} x])
   )`
   var ast = parse(src)
   console.log(ast)
@@ -251,7 +252,17 @@ tape('unroll', function (t) {
   console.log(result)
   console.log(ev([result, 5],scope))
 
-//  console.log(result)
-  console.log(pretty(unroll(result)))
+  var syms = require('../symbols')
+  var unrolled = unroll(result)
+  unrolled.forEach(function (e) {
+    if(syms.def === e[0] && isFun(e[2]))
+      e[2][e[2].length-1] = flatten(e[2][e[2].length-1])
+  })
+
+  console.log(pretty(unrolled))
+  var Wat = require('../compile/wat')
+  t.equal(require('../wat2wasm')(Wat(unrolled))(4), 36)
+//  console.log(Wat(unrolled))
+
   t.end()
 })

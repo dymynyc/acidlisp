@@ -1,4 +1,4 @@
-var {isBoundFun} = require('./new-eval')
+var {isBoundFun,isBoundMac} = require('./new-eval')
 var syms = require('./symbols')
 var {isArray, isSymbol} = require('./util')
 function find(obj, fn) {

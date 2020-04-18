@@ -60,16 +60,30 @@ function unbind (fun) {
 }
 
 module.exports = function (funs) {
-  if(isBoundFun(funs)) {
+  if(isBoundFun(funs) || isBoundMac(funs)) {
     var fun = funs
     funs = unroll(fun, {})
-    console.log(funs)
     return [syms.module]
       .concat(
-        Object.keys(funs)
-        .filter(k=> funs[k] !== fun)
+        Object.keys(funs).reverse()
         .map(k=>[syms.def, Symbol(k), unbind(funs[k])]))
-      .concat([[syms.export, unbind(fun)]])
+      .concat([[syms.export, Symbol(find(funs, fun))]])
   }
+  else {
+    var initial = {}
+    for(var k in funs)
+      initial[k] = funs[k]
+    funs = unroll(null, funs)
 
+    return [syms.module]
+      .concat(
+        Object.keys(funs).reverse()
+        .filter(k=> funs[k] !== initial[k])
+        .map(k=>[syms.def, Symbol(k), unbind(funs[k])])
+      )
+      .concat(
+        Object.keys(initial)
+        .map(k=>[syms.export, k=Symbol(k), k])
+      )
+  }
 }

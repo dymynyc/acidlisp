@@ -1,6 +1,6 @@
 var tape = require('tape')
 var parse = require('../parse')
-var ev = require('../eval')
+var ev = require('../new-eval')
 var unroll = require('../unroll')
 var compileWat = require('../compile/wat')
 var compileJs = require('../compile/js')

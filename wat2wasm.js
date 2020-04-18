@@ -6,15 +6,17 @@ function loadWat(file) {
   var m = new WebAssembly.Module(wasm)
   var instance = new WebAssembly.Instance(m)
   if(instance.exports.main) {
-    instance.exports.main.memory = Buffer.from(instance.exports.memory.buffer)
+    if(instance.exports.memory)
+      instance.exports.main.memory = Buffer.from(instance.exports.memory.buffer)
     return instance.exports.main
   }
   else {
-    instance.exports.memory = Buffer.from(instance.exports.memory.buffer)
+    if(instance.exports.memory)
+      instance.exports.memory = Buffer.from(instance.exports.memory.buffer)
     return instance.exports
   }
 }
-module.exports = function (src, cb) {
+module.exports = function (src) {
   var ts = Date.now()
   var fn_in = '/tmp/wat2wasm_'+ts+'.wat'
   var fn_out = '/tmp/wat2wasm_'+ts+'.wasm'

@@ -29,7 +29,7 @@ function _w(name, args) {
 
 function w(name, args) {
   if(isArray(args)) {
-    args.filter(Boolean)
+    args = args.filter(isDefined)
     var length = args.reduce((sum, a) => sum + a.length, 0)
     return _w(name, args.join(
       args.every(isSingleLine) && length < line_length ? ' ' : '\n'
@@ -70,6 +70,10 @@ function toHex (b) {
   return '"'+[].slice.call(b).map(c => '\\'+Buffer.from([c]).toString('hex')).join('')+'"'
 }
 
+function toName(fn_name) {
+  return isRef(fn_name) ? fromRef(fn_name) : '$'+fn_name.description
+}
+
 //TODO: fix this pointers thing
 var pointers = []
 function compile (ast, isBlock) {
@@ -82,8 +86,7 @@ function compile (ast, isBlock) {
       return fn(ast.slice(1), isBlock)
     }
     else {
-      var fn_index = isRef(fn_name) ? fromRef(fn_name) : '$'+fn_name.description
-      return w('call', [fn_index].concat(ast.slice(1).map(compile)) )
+      return w('call', [toName(fn_name)].concat(ast.slice(1).map(compile)) )
     }
   }
   else if(isNumber(ast))
@@ -101,9 +104,11 @@ exports = module.exports = function (ast, env) {
 }
 
 function assertRef (r) {
- if(!isRef(r))
+  if(isRef(r)) return r
+  else if(isSymbol(r))
+    return r
+  else
     throw new Error('expected function ref:'+stringify(r))
-  return r
 }
 
 function getLiterals (ast) {
@@ -119,19 +124,21 @@ exports.module = function (ast, env) {
   var literals = getLiterals(ast)
   var ptr = 0, free = 0
   pointers = []
+  env = env || {}
+  var free, data
   var memory = env.memory
-  var free = env.globals[0]
-  data = memory.slice(0, free)
+  if(env.globals) free = env.globals[0]
+  if(memory)      data = memory.slice(0, free)
 
   free = ptr //where the next piece of data should go
   var ref
   return w('module', ['\n',
-    w('memory', [w('export', '"memory"'), 1]),
+    memory && w('memory', [w('export', '"memory"'), 1]),
     //a global variable that points to the start of the free data.
 
     //data, literals (strings so far)
-    w('global', ['$FREE', w('mut', 'i32'), compile(free)]),
-    data.length &&
+    env.globals && w('global', ['$FREE', w('mut', 'i32'), compile(free)]),
+    data &&
     w('data',
       [0, w('offset', compile(0)), wasmString.encode(data)]
     ) +'\n'|| '',
@@ -144,13 +151,13 @@ exports.module = function (ast, env) {
       if(isSymbol(e[1]) && e[2]) {// named export
         ref = assertRef(e[2])
         var export_name = e[1].description
-        return w('export', [JSON.stringify(export_name), w('func', fromRef(ref))])
+        return w('export', [JSON.stringify(export_name), w('func', toName(ref))])
       }
       else {
         ref = assertRef(e[1])
         var export_name = "main" //default export name if you only export one thing
       }
-      return w('export', [JSON.stringify(export_name), w('func', fromRef(ref))])
+      return w('export', [JSON.stringify(export_name), w('func', toName(ref))])
     }).join('\n')
   ])
 }
@@ -274,5 +281,5 @@ exports.get_global = function ([index, value]) {
 
 exports.fatal = function ([msg]) {
   //todo: pass message back to user api?
-  return w('unreachable', [])
+  return w('trap', [])
 }

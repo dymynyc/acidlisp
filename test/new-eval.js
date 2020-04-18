@@ -247,10 +247,7 @@ tape('unroll', function (t) {
     (defun bar (x) [{fun (y) [if y (foofoo y) (foo y)]} x])
   )`
   var ast = parse(src)
-  console.log(ast)
   var result = ev(ast, scope)
-  console.log(result)
-  console.log(ev([result, 5],scope))
 
   var syms = require('../symbols')
   var unrolled = unroll(result)
@@ -258,11 +255,8 @@ tape('unroll', function (t) {
     if(syms.def === e[0] && isFun(e[2]))
       e[2][e[2].length-1] = flatten(e[2][e[2].length-1])
   })
-
-  console.log(pretty(unrolled))
   var Wat = require('../compile/wat')
   t.equal(require('../wat2wasm')(Wat(unrolled))(4), 36)
-//  console.log(Wat(unrolled))
 
   t.end()
 })

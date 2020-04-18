@@ -32,14 +32,14 @@ module.exports = function unroll (exports) {
   function createRef(fun) {
     return !isFun(fun) ? fun : toRef(funs.indexOf(fun))
   }
-  
+
   //flatten function bodies
   var def_funs = funs.map(function (fun, i) {
     fun = remap(fun, funs) //replace inlined functions with references.
     fun[fun.length-1] = flatten(fun[fun.length-1]) //flatten the body
     return [syms.def, toRef(i, fun), fun]
   })
-
+  console.log('exports', exports)
   return [syms.module]
     .concat(def_funs)
     .concat(

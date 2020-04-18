@@ -47,10 +47,38 @@ function rebind(fn, scope) {
 
   return [fn[0], fn[1], fn[2], _rebind(fn[3]), fn[4]]
 }
+function find (ary, iter) {
+  var value
+  for(var i = 0; i < ary.length; i++)
+    if(isDefined(value = iter(ary[i])))
+      return value
+}
+
+function lookup(scope, sym, doThrow) {
+  if(isArray(sym)) {
+    var value = scope
+    for(var i = 0; i < sym.length; i++) {
+      if(isArray(value)) {
+        value = find(value, ([k,v]) => {
+          if(k.description === sym[i].description)
+            return v
+        })
+      }
+      else
+        value = value[sym[i].description]
+    }
+    return value
+  }
+  if(!isDefined(scope[sym.description]) && doThrow !== false)
+    throw new Error('cannot resolve symbol:'+String(sym))
+  return scope[sym.description]
+}
 
 function bind (body, scope) {
   var value
   if(Array.isArray(body)) {
+    if(body[0] === syms.get)
+      return lookup(scope, body.slice(1))
     if(body[0] === syms.mac)
       return bind_mac(body, scope)
     if(body[0] === syms.fun)
@@ -85,12 +113,6 @@ function bind_mac (mac, scope) {
   return [boundm, name, args, body, scope]
 }
 
-function lookup(scope, sym, doThrow) {
-  if(!isDefined(scope[sym.description]) && doThrow !== false)
-    throw new Error('cannot resolve symbol:'+String(sym))
-  return scope[sym.description]
-}
-
 function call (fn, argv) {
   if(isFunction(fn))
     return fn.apply(null, argv)
@@ -119,6 +141,9 @@ function ev(ast, scope) {
         value = ev(ast[i], scope)
       return value
     }
+    //modules test doesn't use this yet...
+    if(ast[0] === syms.get)
+      throw new Error('get not supported yet')
     if(ast[0] === syms.def) {
       if(!isSymbol(ast[1])) throw new Error('attempted to define a non-symbol:'+stringify(ast))
       return scope[ast[1].description] = ev(ast[2], scope)
@@ -160,7 +185,6 @@ function ev(ast, scope) {
     if(ast[0] === syms.module) {
       var exports = [], single = null
       for(var i = 1; i < ast.length; i++) {
-        console.log("M", i, ast[i])
         if(isArray(ast[i]) && ast[i][0] === syms.export) {
           if(isSymbol(ast[i][1]) && ast[i].length == 3) {
             if(single === true)

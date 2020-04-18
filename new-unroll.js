@@ -1,6 +1,6 @@
 var {isBoundFun,isBoundMac} = require('./new-eval')
 var syms = require('./symbols')
-var {isArray, isSymbol} = require('./util')
+var {isArray, isSymbol, pretty} = require('./util')
 function find(obj, fn) {
   for(var k in obj)
     if(obj[k] === fn) return k
@@ -18,7 +18,6 @@ function unroll (fun, funs, key) {
   funs = funs || {}
   if(fun == null) {
     funs = toObj(funs)
-    console.log('funs', funs)
     for(var k in funs)
       unroll(funs[k], funs, k)
     return funs
@@ -30,7 +29,7 @@ function unroll (fun, funs, key) {
     : 'fun__' + Object.keys(funs).length
     )
   }
-  funs[getName()]= fun
+  funs[getName()] = fun
   var body = fun[3]
   if(isBoundFun(body)) {
     if(k = find(funs, body)) fun[3] = k
@@ -40,7 +39,6 @@ function unroll (fun, funs, key) {
 
   var scope = fun[4]
   ;(function R (ast) {
-    console.log("R", ast)
     if(isBoundFun(ast[0])) {
       if(k = find(funs, ast[0])) ast[0] = k
       else {
@@ -62,7 +60,6 @@ function unroll (fun, funs, key) {
 }
 
 function unbind (fun, k) {
-  console.log('UNBIND', k, fun)
   if(fun[1]) //named
     return [syms.fun, fun[1], fun[2], fun[3]]
   else if(k)
@@ -89,7 +86,6 @@ module.exports = function (funs) {
     for(var k in funs)
       initial[k] = funs[k]
     funs = unroll(null, funs)
-    console.log(funs)
     return [syms.module]
       .concat(
         Object.keys(funs).reverse()

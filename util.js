@@ -92,6 +92,9 @@ exports.eqSymbol   = eqSymbol
 exports.equals     = equals
 
 function parseFun (fun) {
+  if(fun.length < 3 || fun.length > 4) {
+    throw new Error('incorrect length of fun expression:'+stringify(mac))
+  }
   if(isSymbol(fun[1]))
     return {
       fun: syms.fun === fun[0], mac: syms.mac === fun[0],

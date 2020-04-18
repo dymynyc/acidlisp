@@ -6,7 +6,7 @@ var boundf = Symbol('bound_fun')
 var boundm = Symbol('bound_mac')
 var {
   isSymbol, isFun, isBasic, isFunction, isArray,
-  isMac,
+  isMac, isDefined, parseFun,
   stringify
 } = require('./util')
 
@@ -14,27 +14,7 @@ function isBoundMac (m) {
   return isArray(m) && boundm === m[0]
 }
 
-function keys (map) {
-  var a = []
-  var it = map.keys()
-  while(!(v = it.next()).done)
-    a.push(v.value)
-  return a
-}
-
-function toObj(map) {
-  if(!(map instanceof Map)) return map
-  var obj = {}
-  if(map.parent) obj.__proto__ = toObj(map.parent)
-
-  var it = map.entries()
-  while(!(v = it.next()).done)
-    obj[v.value[0].description] = v.value[1]
-  return obj
-}
-
 function bind (body, scope) {
-  scope = toObj(scope)
   if(Array.isArray(body)) {
     if(body[0] === syms.mac)
       return bind_mac(body, scope)
@@ -58,40 +38,19 @@ function bind (body, scope) {
 }
 
 function bind_fun (fun, scope) {
-  scope = toObj(scope)
-  if(isSymbol(fun[1]))
-    name = fun[1], args = fun[2], body = fun[3]
-  else
-    name = null, args = fun[1], body = fun[2]
-  console.log('bind body?', body)
+  var {name,args,body} = parseFun(fun)
   return [boundf, name, args, bind(body, scope), scope]
 }
 
 function bind_mac (mac, scope) {
-  scope = toObj(scope)
-  if(mac.length < 3 || mac.length > 4) {
-    console.log(mac)
-    throw new Error('incorrect length of mac expression:'+stringify(mac))
-  }
-  if(isSymbol(mac[1]))
-    name = mac[1], args = mac[2], body = mac[3]
-  else
-    name = null, args = mac[1], body = mac[2]
-  //if we bound the body of the macro, it would expand quote.
+  var {name,args,body} = parseFun(mac)
   return [boundm, name, args, body, scope]
 }
 
 function lookup(scope, sym) {
-  scope = toObj(scope)
-  if(!(scope instanceof Map))
-    return scope[sym.description]
-  if(scope.has(sym)) {
-    return scope.get(sym)
-  }
-  else if(scope.parent)
-    return lookup(scope.parent, sym)
-  else
+  if(!isDefined(scope[sym.description]))
     throw new Error('cannot resolve symbol:'+String(sym))
+  return scope[sym.description]
 }
 
 function call (fn, argv) {
@@ -99,20 +58,17 @@ function call (fn, argv) {
     return fn.apply(null, argv)
 
   if(fn[0] !== boundf && fn[0] !== boundm) throw new Error('expected bound function:' + stringify(fn))
-  var scope = new Map()
-  scope.parent = fn[4]
+  var scope = {__proto__: fn[4]}
   var args = fn[2], body = fn[3]
   if(!isArray(args))
     throw new Error('args was wrong:' + stringify([name, args, body]))
   for(var i = 0; i < args.length; i++)
-    scope.set(args[i], argv[i])
+    scope[args[i].description] = argv[i]
 
-  scope = toObj(scope)
   return ev(body, scope)
 }
 
 function ev(ast, scope) {
-  scope = toObj(scope)
   var value
   if(isFun(ast))
     return bind_fun(ast, scope)
@@ -131,8 +87,10 @@ function ev(ast, scope) {
     }
     if(ast[0] === syms.set) {
       if(!isSymbol(ast[1])) throw new Error('attempted to define a non-symbol:'+stringify(ast))
-      if(!scope.hasOwnProperty(ast[1].description)) throw new Error('attempted to set unknown var')
-      console.log('SET', ast, scope)
+      //note: this means you can't set values in the outer closure.
+      //but you can call functions?
+      if(!isDefined(scope[ast[1].description]))
+        throw new Error('attempted to set unknown var')
       return scope[ast[1].description] = ev(ast[2], scope)
     }
     if(ast[0] === syms.quote)
@@ -142,23 +100,17 @@ function ev(ast, scope) {
       return ast.slice(1).map(v => ev(v, scope))
 
     var bf = ev(ast[0], scope)
-    if(isBoundMac(bf)) {
-      value = call(bf, ast.slice(1))
-      console.log('macout', value)
-      return ev(value, scope)
-    }
+    if(isBoundMac(bf))
+      return ev(call(bf, ast.slice(1)), scope)
 
     if(!bf)
       throw new Error('expected function:'+stringify(ast))
 
     return call(bf, ast.slice(1).map(v => ev(v, scope)))
   }
-  else if(isBasic(ast))
-    return ast
-  else if(isSymbol(ast)) //variable!
-    return lookup(scope, ast)
-  else
-    throw new Error('not supported yet:'+stringify(ast))
+  else if(isBasic(ast))  return ast
+  else if(isSymbol(ast)) return lookup(scope, ast)
+  else throw new Error('not supported yet:'+stringify(ast))
 }
 
 function quote (ast, scope) {
@@ -177,7 +129,6 @@ function quote (ast, scope) {
     }
     return ast.map(v => quote (v, scope))
   }
-  //XXX somethings up!
   else if(isSymbol(ast) && scope.__hygene)
     return scope.__hygene[ast.description] || ast
 

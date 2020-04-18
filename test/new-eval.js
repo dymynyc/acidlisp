@@ -5,7 +5,6 @@ var syms = require('../symbols')
 var parse = require('../parse')
 var {isNumber, stringify} = require('../util')
 
-var references = require('../references')
 var {
   isSymbol, isFun, isBasic, isFunction, isArray, stringify
 } = require('../util')
@@ -17,15 +16,16 @@ console.log('test 1')
 function  $(name) {
   return Symbol(name)
 }
-var  a =$('a'), b = $('b'), add = $('add'), eq = $('eq')
+var a = $('a'), b = $('b'), add = $('add'), eq = $('eq')
 
-var scope = new Map()
-scope.set(add, function () {
-  return [].slice.call(arguments).reduce((a,b) => a + b)
-})
-scope.set(eq, function (a, b) {
-  return a === b
-})
+var scope = {
+  add:function () {
+    return [].slice.call(arguments).reduce((a,b) => a + b)
+  },
+  eq: function (a, b) {
+    return a === b
+  }
+}
 
 tape('eval an inline function call', function (t) {
   var code = [[syms.fun, [a, b], [add, a, b, 3]], 1, 2]
@@ -70,7 +70,6 @@ function dehygene (src) {
 }
 
 tape('macro eval', function (t) {
-//  var scope = new Map()
   var z = $('z')
   var incr_z = bind([mac, z], scope)
   //this macro operates on a symbol passed in,
@@ -97,10 +96,8 @@ var swap = [syms.mac,
 
 tape('a macro that creates an internal var should be distinct between runs', function (t) {
 
-  var scope1 = new Map()
-  scope1.parent = scope
-  var scope2 = new Map()
-  scope2.parent = scope
+  var scope1 = {__proto__: scope}
+  var scope2 = {__proto__: scope}
   
   var swap_ab = bind([swap, a, b], scope1)
   var swap_xy = bind([swap, x, y], scope2)
@@ -124,18 +121,14 @@ tape('a macro that creates an internal var should be distinct between runs', fun
 //i think that's fully reasonable.
 //for this to be possible
 
-tape('references within a scope are identical', function (t) {
-  var scope = new Map()
+tape('references within a scope are identical, but quoted var defs get changed', function (t) {
+  var scope = {}
   var ast = parse('(quote (block (def foo 1) (add foo (def bar 3)) ))')
-  var refs = references(ast, scope)
-  //console.log('refs', refs)
-  console.log(references.dump(ast, refs))
- // console.log(ast)
 
-  t.strictEquals(ast[1][1][1], ast[1][2][1])
+  t.strictEquals(ast[1][1][1].description, ast[1][2][1].description)
   var _ast = ev(ast, scope)
-  //console.log(_ast)
 
+  t.notEquals(dehygene(stringify(_ast)), stringify(_ast))
   t.equals(dehygene(stringify(_ast)), '(block (def foo 1) (add foo (def bar 3)))')
 
   t.end()
@@ -145,17 +138,14 @@ tape('references within a scope are identical', function (t) {
 
 
 tape('what happens if a macro calls another macro?', function (t) {
-  function add () {
-    var args = [].slice.call(arguments)
-    if(!args.every(isNumber)) throw new Error('argument was not number:'+stringify(args))
-    return args.reduce((a, b)=>a+b, 0)
+  var scope = {
+    add: function () {
+      return [].slice.call(arguments).reduce((a, b)=>a+b, 0)
+    },
+    sub: function () {
+      return [].slice.call(arguments).reduce((a, b)=>a-b, 0)
+    }
   }
-  function sub () {
-    var args = [].slice.call(arguments)
-    if(!args.every(isNumber)) throw new Error('argument was not number:'+stringify(args))
-    return args.reduce((a, b)=>a-b, 0)
-  }
-  var scope = {add, sub}
   var src =  `
   (block
     (def defun (mac (name args body)
@@ -169,12 +159,13 @@ tape('what happens if a macro calls another macro?', function (t) {
 
     (defmac decr [x] &(set $x (sub $x 1)))
 
-    (defun three () {block
-      (def y 0)
+    ;;defun can still be self evaluating!
+    [(defun three (z) {block
+      (def y z)
       (incr y)
       (incr y)
       (incr y)
-    })
+    }) 3]
   )`
   var ast = parse(src)
 
@@ -189,10 +180,7 @@ tape('what happens if a macro calls another macro?', function (t) {
   //t.strictEqual(name1, name3)
   //t.ok(name1===name3)
 
-  var _scope = new Map()
-  _scope.parent = scope
-
-  console.log(ev(ast, _scope))
+  t.equal(ev(ast, scope), 6)
   
   t.end()
 
@@ -220,7 +208,7 @@ tape('if a macro creates a var does not collide', function (t) {
       (set $y tmp)
     ))
 
-    (defun swapsies () {block
+    (defun swapsies (z) {block
       (def a 1)
       (def b 2)
       (def tmp 7)
@@ -233,15 +221,13 @@ tape('if a macro creates a var does not collide', function (t) {
   )`
 
   var ast = parse(src)
-  
-  var _scope = new Map()
-  _scope.parent = scope
+
   var swapsies = Symbol('swapsies')
-  var _swap = ev(ast, _scope)
+  var _swap = ev(ast, scope)
   console.log(stringify(_swap.slice(0, 4)))
   console.log(_swap[3][1][1], _swap[3][4][1][2])
   t.equal(_swap[3][1][1].description, _swap[3][4][1][2].description)
-  _scope.set(swapsies, _swap)
+  var _scope = {swapsies: _swap, __proto__: scope}
   t.deepEqual(ev([swapsies, 0], _scope), [2,1,7])
 
   t.end()

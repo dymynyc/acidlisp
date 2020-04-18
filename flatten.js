@@ -7,11 +7,13 @@ var {
 
 var syms = require('./symbols')
 
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-   // FLATTEN                            //
-  // take everything-is-an-expression   //
- // and convert it to wasm statements. //
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+      //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+     // FLATTEN                            //
+    // take everything-is-an-expression   //
+   // and convert it to wasm statements. //
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+
+// ONLY RUN THIS ON FUNCTION BODIES! //
 
 function last (ary) {
   return ary[ary.length-1]

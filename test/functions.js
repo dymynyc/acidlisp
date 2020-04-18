@@ -48,5 +48,5 @@ function makeTest(name, i, compiler) {
 }
 inputs.forEach(function (v, i) {
   makeTest('js', i, acid.js_eval)
-//  makeTest('wasm', i, acid.wasm)
+  makeTest('wasm', i, acid.wasm)
 })

@@ -6,6 +6,8 @@ var {
   isExpressionTree,
   toRef, fromRef, isRef
 } = require('../util')
+var flatten = require('../flatten')
+
 var wasmString = require('wasm-string')
 
 var syms = require('../symbols')
@@ -164,16 +166,16 @@ exports.module = function (ast, env) {
 
 exports.fun = function (ast) {
   ast = ast.slice(0)
-  var defs = getDefs(ast)
   var name = isSymbol(ast[0]) ? $(ast.shift()) : ''
   var args = ast.shift()
-  var body = ast
+  var body = flatten(ast[0])
+  var defs = getDefs(body)
   return w('func', [name,
     args.map(e => w('param', ['$'+e.description, 'i32']))
     .join(' ') + ' ' + w('result', 'i32'),
     //TODO: extract local vars from body.
     (defs.length ? defs.map(d => '(local '+$(d)+' i32)').join('\n') : ''),
-    compile(body[0])
+    compile(body)
   ])
 }
 

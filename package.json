@@ -1,6 +1,6 @@
 {
-  "name": "l6",
-  "description": "",
+  "name": "acidlisp",
+  "description": "a lisp for webassembly",
   "version": "1.0.0",
   "homepage": "https://github.com/dominictarr/acidlisp",
   "repository": {

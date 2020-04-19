@@ -93,8 +93,12 @@ function bind (body, scope) {
     }
 
     var bm = bind(body[0], scope)
-    if(isBoundMac(bm))
-      return call(bm, body.slice(1))
+    if(isBoundMac(bm)) {
+      console.log("BINDMAC", bm)
+      var r =  call(bm, body.slice(1))
+//      console.log("BOUND", r, scope)
+      return r
+    }
     else
       return [bm].concat(body.slice(1).map(b => bind(b, scope)))
   }
@@ -124,7 +128,11 @@ function call (fn, argv) {
     throw new Error('args was wrong:' + stringify([name, args, body]))
   for(var i = 0; i < args.length; i++)
     scope[args[i].description] = argv[i]
-  return ev(body, scope)
+
+  if(isBoundMac(fn))
+    return bind(ev(body, scope), scope)
+  else
+    return ev(body, scope)
 }
 
 function ev(ast, scope) {

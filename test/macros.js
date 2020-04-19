@@ -1,71 +1,89 @@
+
 var tape = require('tape')
-var env  = require('../env')()
-// MACROS
-
-return //XXX gonna redo macros so don't fix this right now
-
-// okay, I think I got it figured out.
-// macros are like functions, but they run
-// _during_ function evaluation.
-
-// at the same time as _bind_ (as currently implemented in eval.js)
-// the AST is traversed in the same manner as for eval,
-// except when we find a macro, just call it, without evaluating
-// the arguments.
-// when a macro returns, run bind on the output too, until no macros remain.
-
-var parse = require('../parse')
-var {stringify} = require('../util')
 var ev = require('../eval')
+var parse = require('../parse')
+var createEnv = require('../env')
+var {stringify, pretty} = require('../util')
 
-//var swap =
-//  parse(`(mac swap (a b) &(block (def tmp a) (def a b) (def b tmp)))`)
-//
-var inputs = [
-//disable this macro because we broke it
-//when we made defs not be bound.
-//fix it when we make the new reference system.
+function call(mac, args) {
+  var scope = createEnv()
+//  scope.__proto__ = _scope
+  mac = ev(parse(mac), scope)
+  var r = ev.call(mac, parse(args))
+  console.log(pretty(r))
+  return stringify(r)
+}
 
-//  `[{mac swap (a b) &[block (def tmp a) (def a b) (def b tmp)]} j k]`,
-  `
-  [(mac unroll (l fn) {block
-      (def value (head l))
-      (def rest (tail l))
+tape('step by step macro eval', function (t) {
+  function T (mac, args, expected, scope) {
+    t.equal(call(mac, '(' + args + ')', scope || {}), expected)
+  }
 
-      (if
-        (is_empty rest)
-          [list (quote (fn value))]
-        (block
-          (def rest (quote (unroll rest fn)) )
-          (cat [list [list &(fn value)]] &rest)
-        )
+  T('(mac (x) &{set $x (add $x 1)})', 'z', '(set z (add z 1))')
+  T('(mac (x) &(add $x 1))', 'z', '(add z 1)')
+  T(`
+      (mac R (x c)
+        (if (lte c 0) $x &(add 1 (R $x $(sub c 1))))
       )
-    })
-    (1 2 3 4 5)
-    square
-  ]
+    `,
+    'z 3',
+    '(add 1 (add 1 (add 1 z)))'
+  )
+
+  T(`
+    (mac R (m i c)
+      [if (lte c 0) &[$m $i] &($m (R $m $i $(sub c 1))) ]
+    )
+    `,
+    '(mac (a) &(mul 2 $a)) 1 5',
+    '(mul 2 (mul 2 (mul 2 (mul 2 (mul 2 (mul 2 1))))))'
+  )
+
+  T(`
+    (mac MAP (l1 l2 map)
+      (if
+        [or (is_empty l1) (is_empty l2)]  0 ;; should be an error
+        (if
+          [or (is_empty (tail l1)) (is_empty (tail l2))]
+          &($map $(head l1) $(head l2))
+          &(and
+            ($map $(head l1) $(head l2))
+            (MAP $(tail l1) $(tail l2) $map)
+          )
+        )))
+    `,
+    '(1 2 3 4 5 6) (1 2 30 4) (mac (a b) &(eq $a $b))',
+    '(and (eq 1 1) (and (eq 2 2) (and (eq 3 30) (eq 4 4))))',
+    {sum: 0}
+  )
+
+  // since a list is returned, it's the same as a quote.
+  // but since we are already in eval mode, we don't need unquote
+  T(`
+    (mac call_mac (m args) (cons m args))
   `,
   `
-  (block
-    (def double (mac (c) {block
-      [list (head c) [quote c]]
-    }))
-    (double (square x))
+  (mac (a b c) &(and $a (and $b $c)))
+  (1 2 3)
+  `,
+  `(and 1 (and 2 3))`
   )
-  `
-]
 
-var outputs = [
-  //'(block (def tmp j) (def j k) (def k tmp))',
-  //still not fully decided how to handle lists?
-  '((square 1) (square 2) (square 3) (square 4) (square 5))',
-  '(block (mac (c) (block (list (head c) (quote c)))) (square (square x)))'
-]
+  T(`
+  (def match (mac R (str i) (block
+    (def len (strings.length str))
+    (if (eq i len)
+      &(if (eq (strings.at input (add start i)) $(strings.at str $i)) len 0)
+      &(if (eq (strings.at input (add start i)) $(strings.at str $i)) 
+        (R $input $start $(add 1 i))
+      0)
+    )
+  )))
+  `,
+  '"hello" 0',
+  '()'
+  )
+  
 
-inputs.forEach((v, i) => {
-  tape(inputs[i] +' => '+ outputs[i], function (t) {
-    var result = ev.bind(parse(inputs[i]), env)
-    t.equal(stringify(result), outputs[i])
-    t.end()
-  })
+  t.end()
 })

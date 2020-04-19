@@ -6,7 +6,7 @@ var boundf = Symbol('bound_fun')
 var boundm = Symbol('bound_mac')
 var {
   isSymbol, isFun, isBasic, isFunction, isArray,
-  isMac, isDefined, parseFun,
+  isMac, isDefined, parseFun,pretty,
   stringify
 } = require('./util')
 
@@ -85,11 +85,11 @@ function bind (body, scope) {
       return bind_fun(body, scope)
     else  if(body[0] === syms.quote)
       return quote(body, scope)
-    else if(body[0] === syms.unquote) {
+    else if(body[0] === syms.unquote)
       return ev(body[1], scope)
-    }
     if(isSymbol(body[0]) && !syms[body[0].description] && isBoundMac(value = lookup(scope, body[0], false))) {
-      return call(value, body.slice(1))
+      var r = bind(call(value, body.slice(1)), scope)
+      return r
     }
 
     var bm = bind(body[0], scope)
@@ -169,6 +169,20 @@ function ev(ast, scope) {
         return ev(ast[3], scope)
     }
 
+    else if(ast[0] === syms.and) {
+      var value
+      for(var i = 1;i < ast.length; i++)
+        if(!(value = ev(ast[i], scope)))
+          return 0
+        return value
+    }
+    else if(ast[0] === syms.or) {
+      var value
+      for(var i = 1;i < ast.length; i++)
+        if(value = ev(ast[i], scope))
+          return value
+    }
+
     if(symbol === syms.loop) {
         var test = ast[1]
         var body = ast[2]
@@ -177,7 +191,6 @@ function ev(ast, scope) {
         }
         return value
       }
-
 
     //XXX here, export is only allowed at the top level?
     // should export be allowed inside if?

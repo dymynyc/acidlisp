@@ -51,7 +51,8 @@ function unroll (fun, funs, key) {
       if(!find(funs, fn))
         unroll(fn, funs, ast[0].description)
     }
-
+    else if(isBoundMac(fn))
+      throw new Error('macros should be gone by unroll time:'+pretty(fn))
     for(var i = 1; i < ast.length; i++)
       if(isArray(ast[i])) R(ast[i])
   })(body)

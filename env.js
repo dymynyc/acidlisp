@@ -29,6 +29,9 @@ module.exports = function (memory, globals, exports) {
   exports.tail = function (list) {
     return list.slice(1)
   }
+  exports.cons = function (a, b) {
+    return [a].concat(b)
+  }
   exports.cat = function (a, b) {
     return a.concat(b)
   }
@@ -83,6 +86,7 @@ module.exports = function (memory, globals, exports) {
   exports.i32_store8 = function (i, w) {
     return memory[i] = w
   }
+
   exports.globals = globals
   exports.memory = memory
 

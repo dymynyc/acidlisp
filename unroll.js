@@ -1,50 +1,100 @@
-var {
-  isArray, isFun, getFunctions, toRef
-} = require('./util')
+var {isBoundFun,isBoundMac} = require('./new-eval')
 var syms = require('./symbols')
-
-// take a tree of expanded bound functions and remap them into a topographically
-// ordered set of definitions, with lexical references.
-
-function remap (tree, funs) {
-  return tree.map(branch => {
-    if(!isArray(branch)) return branch
-    if(isFun(branch[0])) {
-      return [toRef(funs.indexOf(branch[0]))].concat(remap(branch.slice(1), funs))
-    }
-    else
-      return remap(branch, funs)
-  })
+var {isArray, isSymbol, pretty} = require('./util')
+function find(obj, fn) {
+  for(var k in obj)
+    if(obj[k] === fn) return k
 }
 
-//UNROLL:
-// 0. evaluate the top level - binds closure vars, and calls setup functions, returns exports.
-// 1. traverse exports, collect all functions.
-// 2. reoutput all functions, as defs.
-// 3. convert exports to references to those defs.
+function toObj(ary) {
+  if(!isArray(ary)) return ary
+  var obj = {}
+  for(var i = 0; i < ary.length; i++)
+    obj[ary[i][0].description] = ary[i][1]
+  return obj
+}
 
-var flatten = require('./flatten')
-
-module.exports = function unroll (exports) {
-  var funs = getFunctions(exports, []).reverse()
-  //note: we don't need to worry about strings in import statements
-  //because they should be evalled away by now
-  function createRef(fun) {
-    return !isFun(fun) ? fun : toRef(funs.indexOf(fun))
+function unroll (fun, funs, key) {
+  funs = funs || {}
+  if(fun == null) {
+    funs = toObj(funs)
+    for(var k in funs)
+      unroll(funs[k], funs, k)
+    return funs
+  }
+  function getName () {
+    return (
+      key ? key
+    : isSymbol(fun[1]) ? fun[1].description
+    : 'fun__' + Object.keys(funs).length
+    )
+  }
+  funs[getName()] = fun
+  var body = fun[3]
+  if(isBoundFun(body)) {
+    if(k = find(funs, body)) fun[3] = k
+    else                     unroll(body, funs)
+    return funs
   }
 
-  //flatten function bodies
-  var def_funs = funs.map(function (fun, i) {
-    fun = remap(fun, funs) //replace inlined functions with references.
-    fun[fun.length-1] = flatten(fun[fun.length-1]) //flatten the body
-    return [syms.def, toRef(i, fun), fun]
-  })
-  console.log('exports', exports)
-  return [syms.module]
-    .concat(def_funs)
-    .concat(
-      isFun(exports)
-      ? [[syms.export, createRef(exports)]]
-      : exports.map(e => [syms.export, e[0], createRef(e[1])])
-    )
+  var scope = fun[4]
+  ;(function R (ast) {
+    if(isBoundFun(ast[0])) {
+      if(k = find(funs, ast[0])) ast[0] = k
+      else {
+        unroll(ast[0], funs)
+        ast[0] = Symbol(find(funs, ast[0]))
+      }
+    }
+    var fn
+    if(isSymbol(ast[0]) && isBoundFun(fn = scope[ast[0].description])) {
+      if(!find(funs, fn))
+        unroll(fn, funs, ast[0].description)
+    }
+    else if(isBoundMac(fn))
+      throw new Error('macros should be gone by unroll time:'+pretty(fn))
+    for(var i = 1; i < ast.length; i++)
+      if(isArray(ast[i])) R(ast[i])
+  })(body)
+
+  return funs
+}
+
+function unbind (fun, k) {
+  if(fun[1]) //named
+    return [syms.fun, fun[1], fun[2], fun[3]]
+  else if(k)
+    //TODO if the function is recursive, replace internal name for itself.
+    //this is necessary for inline functions.
+    return [syms.fun, k, fun[2], fun[3]]
+  else
+    throw new Error('function key not provided')
+}
+
+module.exports = function (funs) {
+  if(isBoundFun(funs) || isBoundMac(funs)) {
+    var fun = funs
+    funs = unroll(fun, {})
+    return [syms.module]
+      .concat(
+        Object.keys(funs).reverse()
+        .map(k=>[syms.def, Symbol(k), unbind(funs[k], Symbol(k))]))
+      .concat([[syms.export, Symbol(find(funs, fun))]])
+  }
+  else {
+    funs = toObj(funs)
+    var initial = {}
+    for(var k in funs)
+      initial[k] = funs[k]
+    funs = unroll(null, funs)
+    return [syms.module]
+      .concat(
+        Object.keys(funs).reverse()
+        .map(k=>[syms.def, Symbol(k), unbind(funs[k], Symbol(k))])
+      )
+      .concat(
+        Object.keys(initial)
+        .map(k=>[syms.export, k=Symbol(k), k])
+      )
+  }
 }

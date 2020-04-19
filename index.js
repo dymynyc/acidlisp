@@ -1,6 +1,6 @@
 var parse      = require('./parse')
 var ev         = require('./new-eval')
-var unroll     = require('./new-unroll')
+var unroll     = require('./unroll')
 var wat        = require('./compile/wat')
 var wat2wasm   = require('./wat2wasm')
 var js         = require('./compile/js')

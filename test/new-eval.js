@@ -4,7 +4,7 @@ var {eval: ev, quote, bind, isBoundFun} = require('../new-eval')
 var syms = require('../symbols')
 var parse = require('../parse')
 var {isNumber, stringify, pretty, isArray} = require('../util')
-var unroll = require('../new-unroll')
+var unroll = require('../unroll')
 var flatten = require('../flatten')
 
 var {

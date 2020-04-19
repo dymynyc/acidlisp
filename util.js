@@ -134,7 +134,7 @@ function indent(s) {
 function stringify_list (l) {
   var s = '('
   for(var i = 0; i < l.length; i++) {
-    var item = pretty(l[i])
+    var item = pretty(l[i]) || 'undefined'
     if(s.length + item.length < 40)
       s += item + ' '
     else

@@ -22,7 +22,7 @@ function envify(ary) {
 
 function evalIf(src, env) {
   env = envify(env || createEnv())
-  return isString(src) ? ev(ev.bind(hydrate(parse(src), env),  env), env) : src
+  return isString(src) ? ev(hydrate(parse(src), env), env) : src
 }
 exports.eval = evalIf
 

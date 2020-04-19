@@ -13,7 +13,7 @@
   (defmac unroll (l v each) {block
     (def value (head l))
     (def rest (tail l))
-    (def iter [list &block [list &def v value] each])
+    (def iter &[block [def $v $value] $each])
 
     [if
       (is_empty rest)
@@ -24,13 +24,24 @@
     ]
   })
 
-
-  ;; each on l until one fails
-  ;; AND is similar to EVERY, evaluates until something fails.
-  [defmac unroll_and (l v each) {block
+  (defmac unroll_r (l v r each) {block
     (def value (head l))
     (def rest (tail l))
-    (def iter [list &block [list &def v value] each])
+    (def iter &[block [def $v $value] $each])
+
+    [if
+      (is_empty rest)
+      iter
+
+    ]
+  })
+
+  ;; apply each to items in l until one fails
+  ;; result is 0 or last value
+  [defmac every (l v each) {block
+    (def value (head l))
+    (def rest (tail l))
+    (def iter &[block [def $v $value] $each])
     [if
       (is_empty rest)
       iter
@@ -42,8 +53,8 @@
   }]
 
   ;; run each on each item in l until one passes
-  ;; OR is similar to FIND. evaluates until something matches.
-  (defmac unroll_or (l v each) {block
+  ;; result is 0 or the pass
+  (defmac find (l v each) {block
     (def value (head l))
     (def rest (tail l))
     (def iter [list &block [list &def v value] each])
@@ -52,14 +63,14 @@
       &iter
       &(block
         (def q $iter)
-        (if q q (unroll_or $rest $v $each))
+        (if q q (find $rest $v $each))
       )
     ]
   })
 
   (export main (fun (n) [block
     (def sum 0)
-    {unroll [1] it (def sum (add sum it))}
+    {unroll [1 2 3] it (def sum (add sum it))}
   ]))
 
 )

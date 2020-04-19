@@ -69,21 +69,6 @@ tape('step by step macro eval', function (t) {
   `(and 1 (and 2 3))`
   )
 
-  T(`
-  (def match (mac R (str i) (block
-    (def len (strings.length str))
-    (if (eq i len)
-      &(if (eq (strings.at input (add start i)) $(strings.at str $i)) len 0)
-      &(if (eq (strings.at input (add start i)) $(strings.at str $i)) 
-        (R $input $start $(add 1 i))
-      0)
-    )
-  )))
-  `,
-  '"hello" 0',
-  '()'
-  )
-  
 
   t.end()
 })

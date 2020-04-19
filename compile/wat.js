@@ -89,7 +89,7 @@ function compile (ast, isBlock) {
       return fn(ast.slice(1), isBlock)
     }
     else {
-      return w('call', [toName(fn_name)].concat(ast.slice(1).map(compile)) )
+      return w('call', [toName(fn_name)].concat(ast.slice(1).map(e => compile(e, isBlock))) )
     }
   }
   else if(isNumber(ast))
@@ -176,7 +176,7 @@ exports.fun = function (ast) {
     .join(' ') + ' ' + w('result', 'i32'),
     //TODO: extract local vars from body.
     (defs.length ? defs.map(d => '(local '+$(d)+' i32)').join('\n') : ''),
-    compile(body)
+    compile(body, false)
   ])
 }
 
@@ -228,13 +228,17 @@ exports.gte = pairOp('i32.ge_s')
 exports.eq  = pairOp('i32.eq')
 exports.neq = pairOp('i32.ne')
 
-exports.block = function (args, funs, isBlock) {
+exports.block = function (args, isBlock) {
+  if(isBlock === undefined) throw new Error('isblock is undefined')
   return args.map((e,i) => {
     //TODO: implement proper globals, and remove that set_ hack
-    if(i+1 < args.length && !syms[e[0].description] && !/^set_/.test(e[0].description) && isExpressionTree(e)) {
-      return w('drop', compile(e, true))
+    if(i+1 < args.length) {
+      if(!syms[e[0].description] && !/^set_/.test(e[0].description) && isExpressionTree(e)) {
+        return w('drop', compile(e, true))
+      }
+      else return compile(e, true)
     }
-    return compile(e, true)
+    return compile(e, isBlock)
   }).join('\n')
 }
 
@@ -242,7 +246,7 @@ exports.def = function ([sym, value], isBlock) {
   return w('local.' +(isBlock ? 'set':'tee'), [$(sym), compile(value)])
 }
 
-exports.loop = function ([test, iter], funs) {
+exports.loop = function ([test, iter], isBlock) {
   //TODO: expand test incase it's got statements
   if(isExpressionTree(test))
     return '(loop (if\n'+

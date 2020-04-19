@@ -103,7 +103,7 @@ exports.clone = function clone (ast) {
 
 function parseFun (fun) {
   if(fun.length < 3 || fun.length > 4) {
-    throw new Error('incorrect length of fun expression:'+stringify(mac))
+    throw new Error('incorrect length of fun expression:'+stringify(fun))
   }
   if(isSymbol(fun[1]))
     return {

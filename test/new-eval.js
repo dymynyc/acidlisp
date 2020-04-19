@@ -1,6 +1,6 @@
 var assert = require('assert')
 var tape = require('tape')
-var {eval: ev, quote, bind, isBoundFun} = require('../new-eval')
+var {eval: ev, quote, bind, isBoundFun} = require('../eval')
 var syms = require('../symbols')
 var parse = require('../parse')
 var {isNumber, stringify, pretty, isArray} = require('../util')

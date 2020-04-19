@@ -1,10 +1,11 @@
 var {
   isDefined, isSymbol, isArray, isBuffer,
   isDef, isFun, isEmpty, isFunction, isNumber, isBound, isString,
-  eqSymbol, equals, stringify, traverse,
+  eqSymbol, equals, stringify,
   getFunctions, getStrings,
   isExpressionTree,
-  toRef, fromRef, isRef
+  toRef, fromRef, isRef,
+  pretty
 } = require('../util')
 var flatten = require('../flatten')
 
@@ -242,6 +243,7 @@ exports.block = function (args, isBlock) {
   }).join('\n')
 }
 
+exports.set =
 exports.def = function ([sym, value], isBlock) {
   return w('local.' +(isBlock ? 'set':'tee'), [$(sym), compile(value)])
 }

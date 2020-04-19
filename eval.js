@@ -69,8 +69,9 @@ function lookup(scope, sym, doThrow) {
     }
     return value
   }
-  if(!isDefined(scope[sym.description]) && doThrow !== false)
+  if(!isDefined(scope[sym.description]) && doThrow !== false) {
     throw new Error('cannot resolve symbol:'+String(sym))
+  }
   return scope[sym.description]
 }
 
@@ -87,20 +88,21 @@ function bind (body, scope) {
       return quote(body, scope)
     else if(body[0] === syms.unquote)
       return ev(body[1], scope)
+
     if(isSymbol(body[0]) && !syms[body[0].description] && isBoundMac(value = lookup(scope, body[0], false))) {
       var r = bind(call(value, body.slice(1)), scope)
       return r
     }
 
-    var bm = bind(body[0], scope)
+    // allow if a bound mac is just returned inline
+    var bm = isBoundMac(body[0]) ? body[0] : bind(body[0], scope)
     if(isBoundMac(bm)) {
-      console.log("BINDMAC", bm)
       var r =  call(bm, body.slice(1))
-//      console.log("BOUND", r, scope)
       return r
     }
-    else
+    else {
       return [bm].concat(body.slice(1).map(b => bind(b, scope)))
+    }
   }
   else if(isSymbol(body) && isBasic(value = lookup(scope, body, false)))
     return value
@@ -128,9 +130,15 @@ function call (fn, argv) {
     throw new Error('args was wrong:' + stringify([name, args, body]))
   for(var i = 0; i < args.length; i++)
     scope[args[i].description] = argv[i]
+  if(fn[1])
+    scope[fn[1].description] = fn
 
-  if(isBoundMac(fn))
-    return bind(ev(body, scope), scope)
+  if(isBoundMac(fn)) {
+    var r = ev(body, scope)
+    //aha! because r is evaluated in the same scope it was called
+    //in it can continue calling itself
+    return bind(r, scope)
+  }
   else
     return ev(body, scope)
 }
@@ -150,8 +158,11 @@ function ev(ast, scope) {
       return value
     }
     //modules test doesn't use this yet...
-    if(ast[0] === syms.get)
-      throw new Error('get not supported yet')
+    if(ast[0] === syms.get) {
+      var v = lookup(scope, ast.slice(1))
+      return v
+//      throw new Error('get not supported yet')
+    }
     if(ast[0] === syms.def) {
       if(!isSymbol(ast[1])) throw new Error('attempted to define a non-symbol:'+stringify(ast))
       return scope[ast[1].description] = ev(ast[2], scope)
@@ -166,6 +177,8 @@ function ev(ast, scope) {
     }
     if(ast[0] === syms.quote)
       return quote(ast[1], scope)
+    if(ast[0] === syms.unquote)
+      return ev(ast[1], scope)
 
     if(ast[0] === syms.list)
       return ast.slice(1).map(v => ev(v, scope))
@@ -189,6 +202,7 @@ function ev(ast, scope) {
       for(var i = 1;i < ast.length; i++)
         if(value = ev(ast[i], scope))
           return value
+      return 0
     }
 
     if(symbol === syms.loop) {
@@ -233,9 +247,9 @@ function ev(ast, scope) {
 
     if(isBoundMac(bf))
       return ev(call(bf, ast.slice(1)), scope)
-    if(isBoundFun(bf) || isFunction(bf))
+    if(isBoundFun(bf) || isFunction(bf)) {
       return call(bf, ast.slice(1).map(v => ev(v, scope)))
-
+    }
     throw new Error('expected function:'+stringify(ast))
   }
   else if(isBasic(ast))  return ast

@@ -230,8 +230,10 @@ exports.neq = pairOp('i32.ne')
 
 exports.block = function (args, funs, isBlock) {
   return args.map((e,i) => {
-    if(i+1 < args.length && isArray(e) && isSymbol(e[0]) && /^\$/.test(e[0].description))
+    //TODO: implement proper globals, and remove that set_ hack
+    if(i+1 < args.length && !syms[e[0].description] && !/^set_/.test(e[0].description) && isExpressionTree(e)) {
       return w('drop', compile(e, true))
+    }
     return compile(e, true)
   }).join('\n')
 }

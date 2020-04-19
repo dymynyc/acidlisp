@@ -3,26 +3,26 @@
   (def mem (import "./memory"))
 
   (def min {fun [x y] (if (lt x y) x y)})
-  (def length {mac [w] &(i32_load w)})
+  (def length {mac [w] &(i32_load $w)})
 
-  (def at (mac [s i] &{i32_load8 (add 4 s i)}))
+  (def at (mac [s i] &{i32_load8 (add 4 $s $i)}))
 
-  (def set_at (mac [s i v] &{i32_store8 (add 4 s i) v}))
+  (def set_at (mac [s i v] &{i32_store8 (add 4 $s $i) $v}))
 
   (def create (mac (len) &{block
-    (def s (mem.alloc (add 4 len)))
-    (i32_store s len)
+    (def s (mem.alloc (add 4 $len)))
+    (i32_store s $len)
     s
   }))
 
-  (def incr {mac [d] &(def $d (add d 1))})
+  (def incr {mac [d] &(def $d (add $d 1))})
 
   (def each {mac [v start end iter]
     &(block
-      (def $v start)
+      (def $v $start)
       (loop
-        (lt $v end)
-        [block iter (incr $v)]
+        (lt $v $end)
+        [block $iter (incr $v)]
       ) )})
 
   (export length length)
@@ -83,7 +83,7 @@
     (each i 0 s_end
       (set_at target [add t_start i] (at source (add s_start i)))
     )
-     0
+    0
   ]})
 
   (export copy copy)

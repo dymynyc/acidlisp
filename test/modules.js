@@ -6,6 +6,7 @@ var wrap = require('../wrap')
 var createEnv = require('../env')
 //var unroll = require('../unroll')
 //var compileJS = require('../compile/js')
+var {pretty} = require('../util')
 
 var resolve = require('../resolve')(
   'node_modules', '.al', JSON.parse, 'package.json'
@@ -52,13 +53,12 @@ tape('import resolve tests', function (t) {
 })
 
 tape('actually import stuff', function (t) {
-
   var createImport = require('../load')
   var env = createEnv(Buffer.alloc(65536), {0:0})
   var _import = createImport(path.join(__dirname, 'examples'), env)
 
   var raw = _import('./')
-
+  console.log(raw)
   function testWrapped(s, name) {
     console.log(name)
     t.equal(s.foofoo(), 27)

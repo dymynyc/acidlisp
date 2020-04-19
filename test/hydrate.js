@@ -2,9 +2,9 @@
 var tape      = require('tape')
 var parse     = require('../parse')
 var createEnv = require('../env')
-var ev        = require('../eval')
+var ev        = require('../new-eval')
 var hydrate   = require('../hydrate')
-var unroll    = require('../unroll')
+var unroll    = require('../new-unroll')
 var wat       = require('../compile/wat')
 var wat2wasm  = require('../wat2wasm')
 

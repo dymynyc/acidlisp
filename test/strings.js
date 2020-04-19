@@ -4,8 +4,8 @@ var tape        = require('tape')
 var syms        = require('../symbols')
 var parse       = require('../parse')
 var hydrate     = require('../hydrate')
-var ev          = require('../eval')
-var unroll      = require('../unroll')
+var ev          = require('../new-eval')
+var unroll      = require('../new-unroll')
 var compileWat  = require('../compile/wat')
 var {
   isArray, isBoolean, isNumber, readBuffer

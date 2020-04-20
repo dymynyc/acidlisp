@@ -194,7 +194,6 @@ this won't work for recursion though, unless there is a way to convert recursion
 `(get foo.prop)` expands to `(read_type (add foo_ptr prop_offset))`
 `(set foo.prop)` expands to `(write_type (add foo_ptr prop_offset) (read_type (add foo_ptr prop_offset)))`
 `foo` expands to `foo_ptr`
-```
 
 ## TODO: fix ugly hacks
 

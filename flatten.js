@@ -1,8 +1,9 @@
+'use strict'
 var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound,
   eqSymbol, equals,
-  isExpressionTree
+  isExpressionTree, pretty
 } = require('./util')
 
 var syms = require('./symbols')
@@ -43,7 +44,7 @@ function insertDef(tree, sym) {
         return trim(_tree)
       }
     }
-    _tree[tree.length-1] = [syms.def, sym, last(tree)]
+    _tree[_tree.length-1] = [syms.def, sym, last(_tree)]
     return trim(_tree)
   }
 }
@@ -82,12 +83,24 @@ var flatten = module.exports = function flatten (tree, n) {
 
   if(tree[0] === syms.if) {
     var sym = $(n)
-    if(isExpressionTree(tree[1]))
-      return [syms.block, [syms.if,
-        tree[1], insertDef(tree[2], sym), insertDef(tree[3], sym)
+    if(isExpressionTree(tree[1])) {
+      var block =  [syms.block, [syms.if,
+        tree[1], insertDef(tree[2], sym), insertDef(isDefined(tree[3]) ? tree[3] : 0, sym)
       ], sym]
-    else
-      throw new Error('if with non-expression test not implemented yet')
+      return block
+    }
+    else {
+      ///throw new Error('if with non-expression test not implemented yet')
+      var block = flatten(tree[1], n)
+      //throw new Error('if with statement test')
+      var test = block.pop()
+      block.push([syms.if, test,
+        insertDef(tree[2], sym),
+        insertDef(isDefined(tree[3]) ? tree[3] : 0, sym)
+      ])
+      block.push(sym)
+      return block
+    }
   }
   else if(tree[0] === syms.block) {
     var block = [syms.block], value
@@ -130,6 +143,8 @@ var flatten = module.exports = function flatten (tree, n) {
         var store = block.pop()
         var value = store.pop()
         var ref = $(++n)
+        if(!isExpressionTree(value))
+          throw new Error('expected expression tree')
         block.push(insertDef(value, ref))
         store.push(ref)
         block.push(store)

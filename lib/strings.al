@@ -9,6 +9,9 @@
 
   (def set_at (mac [s i v] &{i32_store8 (add 4 $s $i) $v}))
 
+  (export at at)
+  (export set_at set_at)
+
   (def create (mac (len) &{block
     (def s (mem.alloc (add 4 $len)))
     (i32_store s $len)

@@ -149,6 +149,7 @@ function stringify (s) {
   if(isArray(s)) return '(' + s.map(stringify).join(' ') + ')'
   if(isSymbol(s)) return s.description
   if(isFunction(s)) return indent(stringify(s.source))
+  if(isObject(s)) return '{object}'
   return JSON.stringify(s)
 }
 

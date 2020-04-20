@@ -47,8 +47,12 @@ function w(name, args) {
 
 function getDefs (ast, defs) {
   defs = defs || {}
-  if(isArray(ast) && isDef(ast[0]))
+  if(isArray(ast) && isDef(ast[0])) {
     defs[$(ast[1])] = true
+    if(isArray(ast[2])) {
+      return getDefs(ast[2], defs)
+    }
+  }
   else if(isArray(ast))
     ast.forEach(a => getDefs(a, defs))
   return Object.keys(defs).map(k => Symbol(k))
@@ -172,6 +176,7 @@ exports.fun = function (ast) {
   var args = ast.shift()
   var body = flatten(ast[0])
   var defs = getDefs(body)
+
   return w('func', [name,
     args.map(e => w('param', ['$'+e.description, 'i32']))
     .join(' ') + ' ' + w('result', 'i32'),
@@ -230,14 +235,15 @@ exports.eq  = pairOp('i32.eq')
 exports.neq = pairOp('i32.ne')
 
 exports.block = function (args, isBlock) {
-  if(isBlock === undefined) throw new Error('isblock is undefined')
+  if(isBlock === undefined) throw new Error('isBlock is undefined')
   return args.map((e,i) => {
     //TODO: implement proper globals, and remove that set_ hack
     if(i+1 < args.length) {
-      if(!syms[e[0].description] && !/^set_/.test(e[0].description) && isExpressionTree(e)) {
+      if(!e) return ''
+      if(isArray(e) && !syms[e[0].description] && !/^set_/.test(e[0].description) && isExpressionTree(e)) {
         return w('drop', compile(e, true))
       }
-      else return compile(e, true)
+     else return compile(e, true)
     }
     return compile(e, isBlock)
   }).join('\n')
@@ -245,7 +251,7 @@ exports.block = function (args, isBlock) {
 
 exports.set =
 exports.def = function ([sym, value], isBlock) {
-  return w('local.' +(isBlock ? 'set':'tee'), [$(sym), compile(value)])
+  return w('local.' +(isBlock ? 'set':'tee'), [$(sym), compile(value, false)])
 }
 
 exports.loop = function ([test, iter], isBlock) {

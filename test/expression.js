@@ -13,9 +13,10 @@ var acid = require('../')
 
 var env = {
   a: 7, b: 0, d: 0, e: 0, f: 1,
-  and: (a) => a & 1,
-  add: (a, b)=> a + b,
-  lt:  (a, b) => a < b
+//  and: (a)    => a & 1, //wtf?
+  add: (a, b) => a + b,
+  lt:  (a, b) => a < b,
+  sub: (a, b) => a - b,
 }
 
 var inputs = [
@@ -26,11 +27,15 @@ var inputs = [
   '(if d 1 (if e 1 0))', //(OR d e)
   '(if d 1 (if e 1 (if f 1 0)))', //(OR d e)
   '(block (def i 1) (loop (lt i 100) (def i (add i i))))',
-  '(block (def i 1) (loop (if (lt i 50) 1 0) (def i (add i i))))'
+  '(block (def i 1) (loop (if (lt i 50) 1 0) (def i (add i i))))',
+  '(if (if (sub (lt a 4) b) 10 0) 10 -10)',
+  '(if [block {def x b} (if (sub (lt x 4) b) 10 0) ] 10 -10)'
 ]
 
 var isExprTree = [
   true,
+  false,
+  false,
   false,
   false,
   false,
@@ -48,7 +53,9 @@ var outputs = [
  '(block (if d (def $1 1) (if e (def $1 1) (def $1 0))) $1)',
  '(block (if d (def $1 1) (if e (def $1 1) (if f (def $1 1) (def $1 0)))) $1)',
  '(block (def i 1) (loop (lt i 100) (def $1 (def i (add i i)))) $1)',
- '(block (def i 1) (loop (block (if (lt i 50) (def $1 1) (def $1 0)) $1) (def $2 (def i (add i i)))) $2)'
+ '(block (def i 1) (loop (block (if (lt i 50) (def $1 1) (def $1 0)) $1) (def $2 (def i (add i i)))) $2)',
+ '(block (if (sub (lt a 4) b) (def $1 10) (def $1 0)) (if $1 (def $1 10) (def $1 -10)) $1)',
+ '(block (def x b) (if (sub (lt x 4) b) (def $1 10) (def $1 0)) (if $1 (def $1 10) (def $1 -10)) $1)'
 ]
 
 var expected = [
@@ -59,7 +66,9 @@ var expected = [
   0,
   1,
   128,
-  64
+  64,
+  -10,
+  10
 ]
 
 var keys = Object.keys(env).filter(e => isNumber(env[e]))

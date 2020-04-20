@@ -208,6 +208,22 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 20/4/2020
+
+rewrote eval the other day, then fixed more bugs that were breaking
+macros. I'm getting much better at them. I started porting
+[stack-expression](https://github.com/dominictarr/stack-expression)
+to acid. Next is figure out how to handle capture groups.
+
+### 17/4/2020
+
+I had been trying to think of a catchy name. I decided
+_acid lisp_ because it needs to some sort of joke.
+and acid eats rust. do I really think I can make a better
+language than rust? well I certainly think I can make a simpler
+one. it's good to set your sights high.
+
+
 ### 14/4/2020
 
 Just discovered a huge bug. I've been refactoring the js interpreter
@@ -224,13 +240,6 @@ obviously the way I'm handling function references is totally wrong.
 a reference should not look like an inline. I got everything working
 I think I wanna go back to working on the parser and cycle back to this.
 
-### 17/4/2020
-
-I had been trying to think of a catchy name. I decided
-_acid lisp_ because it needs to some sort of joke.
-and acid eats rust. do I really think I can make a better
-language than rust? well I certainly think I can make a simpler
-one. it's good to set your sights high.
 
 ## License
 

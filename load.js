@@ -7,7 +7,7 @@ var resolve = require('./resolve')(
   'node_modules', '.al', JSON.parse, 'package.json'
 )
 var {
-  stringify,isBuffer,isNumber,readBuffer
+  pretty,stringify,isBuffer,isNumber,readBuffer
 } = require('./util')
 
 var fs = require('fs')
@@ -40,9 +40,9 @@ if(!module.parent) {
   if(!/^\.\.?\//.test(file)) file = './'+file
 
   if(opts.parse)
-    console.log(stringify(acid.parse(fs.readFileSync(file, 'utf8'))))
+    console.log(pretty(acid.parse(fs.readFileSync(file, 'utf8'))))
   else if(opts.acid)
-    console.log(stringify(require('./unroll')(load(file))))
+    console.log(pretty(require('./unroll')(load(file))))
   else if(opts.js)
     console.log(acid.js(load(file)), env)
   else

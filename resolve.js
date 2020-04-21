@@ -1,6 +1,8 @@
 var fs = require('fs')
 var path = require('path')
 
+//this probably needs caching?
+
 module.exports = function (MODULES, EXT, PARSE, PKG) {
   if(EXT[0] != '.')
     throw new Error('extention must start with ".", was:'+EXT)
@@ -17,8 +19,7 @@ module.exports = function (MODULES, EXT, PARSE, PKG) {
     //note: wasm data sections wat format is a string,
     //but can do \hh hex format escapes.
     var ext = path.extname(moduleFile)
-    if(ext)
-      return moduleFile
+    if(ext) return moduleFile
     try {
       var stat = fs.statSync(moduleFile)
     } catch(err) {

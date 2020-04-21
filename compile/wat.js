@@ -298,5 +298,5 @@ exports.get_global = function ([index, value]) {
 
 exports.fatal = function ([msg]) {
   //todo: pass message back to user api?
-  return w('trap', [])
+  return '(unreachable)'
 }

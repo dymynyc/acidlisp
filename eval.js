@@ -5,7 +5,7 @@ var syms = require('./symbols')
 var boundf = Symbol('bound_fun')
 var boundm = Symbol('bound_mac')
 var {
-  isSymbol, isFun, isBasic, isFunction, isArray,
+  isSymbol, isFun, isBasic, isFunction, isArray, isObject,
   isMac, isDefined, parseFun,pretty,
   stringify
 } = require('./util')
@@ -19,6 +19,28 @@ function isBoundFun (f) {
 
 function isCore (c) {
   return syms[c.description] === c
+}
+
+function dump(scope) {
+  if(!scope || isBoundFun(scope) || isBoundMac(scope)|| isBasic(scope)|| isFun(scope) || isMac(scope) || isFunction(scope))
+    return scope
+  var o = {}
+  ;(function R (scope) {
+    if(!scope) return
+    if(isArray(scope)) return scope
+//    if(Array.isArray(scope)) {
+//      console.log("ARRAY?", scope)
+//      for(var i = 0; i < scope.length; i++) {
+//        o[scope[i][0].description] = dump(scope[i][1])
+//      }
+//    }
+    else {
+      for(var k in scope)
+      o[k] = dump(scope[k])
+      R(scope.__proto__)
+    }
+  })(scope)
+  return o
 }
 
 //inline scoped vars, but don't overwrite arguments
@@ -55,6 +77,7 @@ function find (ary, iter) {
 }
 
 function lookup(scope, sym, doThrow) {
+//  console.log("LOOKUP", sym, dump(scope))
   if(isArray(sym)) {
     var value = scope
     for(var i = 0; i < sym.length; i++) {
@@ -64,18 +87,26 @@ function lookup(scope, sym, doThrow) {
             return v
         })
       }
-      else
+      else if(isObject(value))
         value = value[sym[i].description]
+      else if(doThrow !== false)
+        throw new Error('could not resolve:'+String(sym[i]))
+      else
+        return undefined
     }
     return value
   }
-  if(!isDefined(scope[sym.description]) && doThrow !== false) {
-    throw new Error('cannot resolve symbol:'+String(sym))
+  if(!isDefined(scope[sym.description])) {
+    if(doThrow !== false)
+      throw new Error('cannot resolve symbol:'+String(sym))
+    return undefined
   }
   return scope[sym.description]
 }
 
-function bind (body, scope) {
+var bind = wrap(_bind)
+
+function _bind (body, scope) {
   var value
   if(Array.isArray(body)) {
     if(body[0] === syms.get)
@@ -90,14 +121,14 @@ function bind (body, scope) {
       return ev(body[1], scope)
 
     if(isSymbol(body[0]) && !syms[body[0].description] && isBoundMac(value = lookup(scope, body[0], false))) {
-      var r = bind(call(value, body.slice(1)), scope)
+      var r = bind(call(value, body.slice(1).map(e => bind(e, scope)), scope), scope)
       return r
     }
 
     // allow if a bound mac is just returned inline
     var bm = isBoundMac(body[0]) ? body[0] : bind(body[0], scope)
     if(isBoundMac(bm)) {
-      var r =  call(bm, body.slice(1))
+      var r =  bind(call(bm, body.slice(1).map(e => bind(e, scope))), scope)
       return r
     }
     else {
@@ -119,7 +150,7 @@ function bind_mac (mac, scope) {
   return [boundm, name, args, body, scope]
 }
 
-function call (fn, argv) {
+function call (fn, argv, callingScope) {
   if(isFunction(fn))
     return fn.apply(null, argv)
 
@@ -137,17 +168,37 @@ function call (fn, argv) {
     var r = ev(body, scope)
     //aha! because r is evaluated in the same scope it was called
     //in it can continue calling itself
-    return bind(r, scope)
+    try {
+      return bind(r, scope)
+    }
+    catch(err) {
+      console.error('problem binding', dump(callingScope))
+      throw err
+    }
   }
   else
     return ev(body, scope)
 }
 
-function ev(ast, scope) {
-  var r = _ev(ast, scope)
-  console.log('eval', pretty(ast), '=>', pretty(r))
-  return r
+function wrap (fn) {
+  return function () {
+    var args = [].slice.call(arguments)
+    try {
+      return fn.apply(null, args)
+    } catch (err) {
+      if(!err.depth)
+        err.depth = 1
+      else {
+        err.depth ++
+        if(err.depth < 10)
+          err.message = err.message + '\nat ' + fn.name + ':'+err.depth + '\n'+pretty(args[0])
+      }
+      throw err
+    }
+  }
 }
+
+var ev = wrap(_ev)
 
 function _ev(ast, scope) {
   var value, env = scope
@@ -252,7 +303,7 @@ function _ev(ast, scope) {
       bf = ev(ast[0], scope)
 
     if(isBoundMac(bf)) //XXX
-      return ev(call(bf, ast.slice(1).map(e => quote(e, scope))), scope)
+      return ev(bind(call(bf, ast.slice(1).map(e => bind(e, scope)), scope), scope), scope)
     if(isBoundFun(bf) || isFunction(bf)) {
       return call(bf, ast.slice(1).map(v => ev(v, scope)))
     }

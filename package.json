@@ -8,13 +8,13 @@
     "url": "git://github.com/dominictarr/acidlisp.git"
   },
   "dependencies": {
-    "hexpp": "^2.0.0",
     "minimist": "^1.2.5",
     "stack-expression": "^1.6.1",
-    "tape": "^4.13.2",
     "wasm-string": "^1.0.1"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "tape": "^4.13.2"
+  },
   "scripts": {
     "test": "tape test/*.js"
   },

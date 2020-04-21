@@ -39,7 +39,7 @@ module.exports = function (memory, globals, exports) {
     return args
   }
   exports.is_empty = function (list) {
-    return list.length === 0
+    return +(list.length === 0)
   }
 
   exports.lt = function (a, b) {

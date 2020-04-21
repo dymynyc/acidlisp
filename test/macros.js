@@ -57,29 +57,6 @@ tape('step by step macro eval', function (t) {
     {sum: 0}
   )
 
-  // since a list is returned, it's the same as a quote.
-  // but since we are already in eval mode, we don't need unquote
-  T(`
-    (mac call_mac (m args) (cons m args))
-  `,
-  `
-  (mac (a b c) &(and $a (and $b $c)))
-  (1 2 3)
-  `,
-  `(and 1 (and 2 3))`
-  )
-
-
-//  T(`
-//    (mac typemac (key value) (list &list key value))
-//  `,
-//  `
-//  foo (mac abc () "abc")
-//  `,
-//  `(list foo (mac abc () "abc"))`
-//  )
-
-
   T(`
     (mac R (l i) {block
       (def sum (add (head l) i))
@@ -87,7 +64,7 @@ tape('step by step macro eval', function (t) {
         sum
         (cat
          [list &list sum]
-         (R $(tail l) $sum)
+         [R $(tail l) $sum]
         )
       )
     })
@@ -95,7 +72,6 @@ tape('step by step macro eval', function (t) {
   '(1 2 3 4 5) 0',
   '(list 1 3 6 10 15)'
   )
-
   //way easier to do that using iteration!
   T(`
     (mac R (l) {block

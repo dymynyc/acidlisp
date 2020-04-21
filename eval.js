@@ -144,6 +144,12 @@ function call (fn, argv) {
 }
 
 function ev(ast, scope) {
+  var r = _ev(ast, scope)
+  console.log('eval', pretty(ast), '=>', pretty(r))
+  return r
+}
+
+function _ev(ast, scope) {
   var value, env = scope
   //if we encounter a inline function, bind that are in scope.
   if(isBoundFun(ast)) return rebind(ast, scope)
@@ -245,8 +251,8 @@ function ev(ast, scope) {
     else
       bf = ev(ast[0], scope)
 
-    if(isBoundMac(bf))
-      return ev(call(bf, ast.slice(1)), scope)
+    if(isBoundMac(bf)) //XXX
+      return ev(call(bf, ast.slice(1).map(e => quote(e, scope))), scope)
     if(isBoundFun(bf) || isFunction(bf)) {
       return call(bf, ast.slice(1).map(v => ev(v, scope)))
     }
@@ -263,6 +269,8 @@ function quote (ast, scope) {
     if(ast[0] === syms.unquote) {
       return ev(ast[1], scope)
     }
+    else if(ast[0] === syms.quote)
+      return ast
     //note; they could do (quote (def (unquote sym)))
     //to define a symbol passed in from caller.
     if(ast[0] === syms.def && isSymbol(ast[1])) {

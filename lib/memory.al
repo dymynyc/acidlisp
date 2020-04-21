@@ -4,8 +4,13 @@
   (export alloc {fun (size) [block
     ;;start of free memory stored in free global
     (def free (get_global 0))
+    ;; never alloc data at 0, because it looks like a null pointer.
+    (set free (if (eq 0 free) 4 free))
     ;;move it forward, by the amount requested
-    (set_global 0 (add free size))
+    ;;also store at memory location 0
+    (def _free (add free size))
+    (i32_store 0 _free)
+    (set_global 0 _free)
     ;;return the old position.
     free
   ]})

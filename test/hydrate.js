@@ -33,8 +33,8 @@ tape('hydrate', (t) => {
 
   var l = "hello world".length
 
-  t.equal(mem.readUInt32LE(0), l)
-  t.equal(mem.toString('utf8', 4, 4+l), "hello world")
+  t.equal(mem.readUInt32LE(4), l)
+  t.equal(mem.toString('utf8', 8, 8+l), "hello world")
 
   var src = wat(unroll(ev(ast, env)), env)
   console.log("SRC", src)

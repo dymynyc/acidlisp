@@ -128,7 +128,7 @@ exports.toEnv = function (args, argv, _env) {
 }
 
 function indent(s) {
-    return s.split('\n').map(line => '  ' + line).join('\n')
+    return (''+s).split('\n').map(line => '  ' + line).join('\n')
 }
 
 function stringify_list (l) {

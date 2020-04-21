@@ -70,5 +70,51 @@ tape('step by step macro eval', function (t) {
   )
 
 
+//  T(`
+//    (mac typemac (key value) (list &list key value))
+//  `,
+//  `
+//  foo (mac abc () "abc")
+//  `,
+//  `(list foo (mac abc () "abc"))`
+//  )
+
+
+  T(`
+    (mac R (l i) {block
+      (def sum (add (head l) i))
+      (if (is_empty (tail l))
+        sum
+        (cat
+         [list &list sum]
+         (R $(tail l) $sum)
+        )
+      )
+    })
+  `,
+  '(1 2 3 4 5) 0',
+  '(list 1 3 6 10 15)'
+  )
+
+  //way easier to do that using iteration!
+  T(`
+    (mac R (l) {block
+      (def out [list &list])
+      (def sum 0)
+      (loop (eq 0 (is_empty l))
+        (block
+          [set sum (add (head l) sum) ]
+          (set out (cat out [list sum]))
+          (set l (tail l))
+        )
+      )
+      out
+    })
+  `,
+  '(1 2 3 4 5)',
+  '(list 1 3 6 10 15)'
+  )
+
+
   t.end()
 })

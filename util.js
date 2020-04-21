@@ -80,6 +80,7 @@ function equals (a, b) {
 exports.isDefined  = isDefined
 exports.isSymbol   = isSymbol
 exports.isArray    = isArray
+exports.isObject   = isObject
 exports.isDef      = isDef
 exports.isEmpty    = isEmpty
 exports.isNull     = isNull

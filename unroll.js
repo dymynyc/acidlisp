@@ -61,12 +61,15 @@ function unroll (fun, funs, key) {
 }
 
 function unbind (fun, k) {
+  var sym = isBoundFun(fun) ? syms.fun : isBoundMac(fun) ? syms.mac : null
+  if(!sym) throw new Error('neither a fun or a mac!:'+pretty(fun))
+
   if(fun[1]) //named
-    return [syms.fun, fun[1], fun[2], fun[3]]
+    return [sym, fun[1], fun[2], fun[3]]
   else if(k)
     //TODO if the function is recursive, replace internal name for itself.
     //this is necessary for inline functions.
-    return [syms.fun, k, fun[2], fun[3]]
+    return [sym, k, fun[2], fun[3]]
   else
     throw new Error('function key not provided')
 }

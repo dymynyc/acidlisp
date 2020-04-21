@@ -23,6 +23,52 @@ module.exports = function (memory, globals, exports) {
   exports.pow = function (a, b) {
     return Math.pow(a, b)
   }
+  exports.lt = function (a, b) {
+    return +(a < b)
+  }
+  exports.lte = function (a, b) {
+    return +(a <= b)
+  }
+  exports.gt = function (a, b) {
+    return +(a > b)
+  }
+  exports.gte = function (a, b) {
+    return +(a >= b)
+  }
+  exports.eq = function (a, b) {
+    return +(a === b)
+  }
+  exports.neq = function (a, b) {
+    return +(a !== b)
+  }
+  exports.fatal = function (m) {
+    throw new Error(m)
+  }
+  exports.set_global = function (i, v) {
+    globals[i] = v
+  }
+  exports.get_global = function (i) {
+    if(!isDefined(globals[i]))
+      throw new Error('global['+i+'] is not defined')
+    return globals[i]
+  }
+  exports.i32_load = function (i) {
+    return memory.readUInt32LE(i)
+  }
+  exports.i32_store = function (i, w) {
+    return memory.writeUInt32LE(w, i)
+  }
+  exports.i32_load8 = function (i) {
+    return memory[i]
+  }
+  exports.i32_store8 = function (i, w) {
+    return memory[i] = w
+  }
+  exports.globals = globals
+  exports.memory = memory
+
+  //the following should certainly be removed at some point.
+
   exports.head = function (list) {
     return list[0]
   }
@@ -42,53 +88,6 @@ module.exports = function (memory, globals, exports) {
     return +(list.length === 0)
   }
 
-  exports.lt = function (a, b) {
-    return +(a < b)
-  }
-  exports.lte = function (a, b) {
-    return +(a <= b)
-  }
-  exports.gt = function (a, b) {
-    return +(a > b)
-  }
-  exports.gte = function (a, b) {
-    return +(a >= b)
-  }
-  exports.eq = function (a, b) {
-    return +(a === b)
-  }
-  exports.neq = function (a, b) {
-    return +(a !== b)
-  }
-
-  exports.fatal = function (m) {
-    throw new Error(m)
-  }
-
-  exports.set_global = function (i, v) {
-    globals[i] = v
-  }
-  exports.get_global = function (i) {
-    if(!isDefined(globals[i]))
-      throw new Error('global['+i+'] is not defined')
-    return globals[i]
-  }
-
-  exports.i32_load = function (i) {
-    return memory.readUInt32LE(i)
-  }
-  exports.i32_store = function (i, w) {
-    return memory.writeUInt32LE(w, i)
-  }
-  exports.i32_load8 = function (i) {
-    return memory[i]
-  }
-  exports.i32_store8 = function (i, w) {
-    return memory[i] = w
-  }
-
-  exports.globals = globals
-  exports.memory = memory
 
   return exports
 }

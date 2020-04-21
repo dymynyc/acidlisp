@@ -208,6 +208,15 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 21/4/2020
+
+okay more wrestling with macros. thought a lot about
+how to do structs. implemented cons and other list stuff.
+was just about to have the parser do captures but
+hit a problem with modules. somehow the module falls
+off the scope? maybe it's time for stack traces!
+
+
 ### 20/4/2020
 
 rewrote eval the other day, then fixed more bugs that were breaking

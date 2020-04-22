@@ -47,14 +47,16 @@ function w(name, args) {
 
 function getDefs (ast, defs) {
   defs = defs || {}
-  if(isArray(ast) && isDef(ast[0])) {
-    defs[$(ast[1])] = true
-    if(isArray(ast[2])) {
-      return getDefs(ast[2], defs)
+  if(isArray(ast)) {
+    if(isDef(ast[0])) {
+      defs[$(ast[1])] = true
+      if(isArray(ast[2])) {
+        return getDefs(ast[2], defs)
+      }
     }
+    else
+      ast.forEach(a => getDefs(a, defs))
   }
-  else if(isArray(ast))
-    ast.forEach(a => getDefs(a, defs))
   return Object.keys(defs).map(k => Symbol(k))
 }
 
@@ -176,7 +178,6 @@ exports.fun = function (ast) {
   var args = ast.shift()
   var body = flatten(ast[0])
   var defs = getDefs(body)
-
   return w('func', [name,
     args.map(e => w('param', ['$'+e.description, 'i32']))
     .join(' ') + ' ' + w('result', 'i32'),

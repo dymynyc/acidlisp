@@ -328,13 +328,14 @@ function quote (ast, scope) {
       if(!scope.__hygene) scope.__hygene = {}
       var newSym = Symbol(ast[1].description + '__' + (++counter))
       scope.__hygene[ast[1].description] = newSym
-      return [ast[0], newSym, bind(ast[2], scope)]
+      //made this mistake sever times: after doing the map,
+      //didn't traverse into the last arg!
+      return [ast[0], newSym, quote(ast[2], scope)]
     }
     return ast.map(v => quote (v, scope))
   }
   else if(isSymbol(ast) && scope.__hygene)
     return scope.__hygene[ast.description] || ast
-
   return ast
 }
 exports = module.exports = ev

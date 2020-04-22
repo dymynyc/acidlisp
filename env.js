@@ -87,7 +87,10 @@ module.exports = function (memory, globals, exports) {
   exports.is_empty = function (list) {
     return +(list.length === 0)
   }
-
+  exports.log = function (str) {
+    console.error(str)
+    return str
+  }
 
   return exports
 }

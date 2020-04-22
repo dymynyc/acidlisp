@@ -214,6 +214,15 @@ the problem was that quotes where transforming vars
 (to add hygene) but it wasn't traversing into def values
 (which can contain more defs)
 
+I got to capturing groups, but then with multiple layers
+of Many or More patterns something wasn't quite right.
+sometimes a Many steals extra characters. Reading the
+generated code is really hard. It doesn't help that
+flatten sticks quite a few extra variables in there.
+
+I think the next thing is to implement logging.
+then i might be able to figure out what is going on.
+
 ### 21/4/2020
 
 okay more wrestling with macros. thought a lot about

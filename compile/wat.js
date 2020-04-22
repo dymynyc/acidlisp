@@ -143,9 +143,12 @@ exports.module = function (ast, env) {
   free = ptr //where the next piece of data should go
   var ref
   return w('module', ['\n',
+    w('import', ['"system"',  '"log"',
+      w('func', ['$sys_log',
+        w('param', ['i32']), w('result', ['i32'])
+      ])]),
     memory && w('memory', [w('export', '"memory"'), 1]),
     //a global variable that points to the start of the free data.
-
     //data, literals (strings so far)
     env.globals && w('global', ['$FREE', w('mut', 'i32'), compile(free)]),
     data &&
@@ -270,9 +273,9 @@ exports.loop = function ([test, iter], isBlock) {
       indent(
         compile(test, true)+'\n'+
         '(if '+compile(value, false)+
-          '(then\n' +
-          indent(compile(iter, false) + ' (br 1))))')
-      )
+          '\n(then\n' +
+          indent(compile(iter, false))+ '\n(br 1)\n))'
+      ) + '\n)'
   }
 }
 
@@ -300,4 +303,8 @@ exports.get_global = function ([index, value]) {
 exports.fatal = function ([msg]) {
   //todo: pass message back to user api?
   return '(unreachable)'
+}
+
+exports.log = function ([ptr]) {
+  return w('call', ['$sys_log', compile(ptr)])
 }

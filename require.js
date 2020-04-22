@@ -3,8 +3,9 @@ var acid = require('./')
 var Env  = require('./env')
 
 module.exports = function (dir) {
-  var load = Load(dir, Env(Buffer.alloc(65536), {0:0}))
+  var env = Env(Buffer.alloc(65536), {0:0})
+  var load = Load(dir, env)
   return function (req) {
-    return acid.wasm(load(req))
+    return acid.wasm(load(req), env)
   }
 }

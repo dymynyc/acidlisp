@@ -4,15 +4,25 @@ var cp = require('child_process')
 function loadWat(file) {
   var wasm = fs.readFileSync(file)
   var m = new WebAssembly.Module(wasm)
-  var instance = new WebAssembly.Instance(m)
-  if(instance.exports.main) {
-    if(instance.exports.memory)
-      instance.exports.main.memory = Buffer.from(instance.exports.memory.buffer)
+  var memory
+  var instance = new WebAssembly.Instance(m, {
+    system: {
+       log: function (p) {
+        var l = memory.readUInt32LE(p)
+        console.error(memory.slice(p+4, p+4+l).toString())
+        return p
+      }
+    }
+  })
+
+ if(instance.exports.memory)
+  var memory = Buffer.from(instance.exports.memory.buffer)
+  if(instance.exports.main){
+    instance.exports.main.memory = memory
     return instance.exports.main
   }
   else {
-    if(instance.exports.memory)
-      instance.exports.memory = Buffer.from(instance.exports.memory.buffer)
+    instance.exports.memory = memory
     return instance.exports
   }
 }

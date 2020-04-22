@@ -1,6 +1,6 @@
 var {isBoundFun,isBoundMac} = require('./eval')
 var syms = require('./symbols')
-var {isArray, isSymbol, pretty} = require('./util')
+var {isArray, isSymbol, isEmpty, pretty} = require('./util')
 function find(obj, fn) {
   for(var k in obj)
     if(obj[k] === fn) return k
@@ -60,6 +60,36 @@ function unroll (fun, funs, key) {
   return funs
 }
 
+function checkUnbound (fn, _scope) {
+  var unbound = {}
+  var scope = {__proto__: scope}
+  if(isSymbol(fn[1])) scope[fn[1]] = true //check if the function has a name
+
+  fn[2].forEach(function (k) {
+    if(!isSymbol(k)) throw new Error('function arg was not symbol')
+    scope[k.description] = true
+  })
+
+  ;(function R (ast) {
+    if(!isArray(ast)) throw new Error('should be array')
+    if(ast[0] === syms.def) {
+      scope[ast[1].description] = true
+      R(ast.slice(2)) //check the value
+    }
+    for(var i = 0; i < ast.length; i++) {
+      var v = ast[i]
+      if(isSymbol(v)) {
+        var name = v.description
+        if(v !== syms[name] && !scope[name])
+          unbound[name] = true
+      }
+      if(isArray(v)) R(v)
+    }
+  })(fn[3])
+  console.error(Object.keys(scope).join(', '))
+  return isEmpty(unbound) ? null : unbound
+}
+
 function unbind (fun, k) {
   var sym = isBoundFun(fun) ? syms.fun : isBoundMac(fun) ? syms.mac : null
   if(!sym) throw new Error('neither a fun or a mac!:'+pretty(fun))
@@ -74,10 +104,20 @@ function unbind (fun, k) {
     throw new Error('function key not provided')
 }
 
+function assertUnbound(funs) {
+  for(var k in funs) {
+    var fn = funs[k]
+    var v = checkUnbound(fn)
+    if(v) throw new Error('found unbound variables:'+Object.keys(v).join(', ') + ' in fun:'+(fn[1]||k))
+  }
+
+}
+
 module.exports = function (funs) {
   if(isBoundFun(funs) || isBoundMac(funs)) {
     var fun = funs
     funs = unroll(fun, {})
+    //assertUnbound(funs)
     return [syms.module]
       .concat(
         Object.keys(funs).reverse()
@@ -90,6 +130,7 @@ module.exports = function (funs) {
     for(var k in funs)
       initial[k] = funs[k]
     funs = unroll(null, funs)
+    //assertUnbound(funs)
     return [syms.module]
       .concat(
         Object.keys(funs).reverse()

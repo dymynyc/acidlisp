@@ -11,8 +11,9 @@ var {
 } = require('./util')
 
 var fs = require('fs')
-function createImport (dir, env) {
+function createImport (dir, env, cache) {
   if(!env) env = createEnv()
+  cache = cache || {}
   return function (require) {
     if(Array.isArray(require)) require = require[0]
     if(Buffer.isBuffer(require))
@@ -20,8 +21,9 @@ function createImport (dir, env) {
     else if(isNumber(require))
       require = readBuffer(env.memory, require).toString()
     var target = resolve(require, dir)
-    return acid.eval(fs.readFileSync(target, 'utf8'), {
-      import: createImport(path.dirname(target), env),
+    if(cache[target]) return cache[target]
+    return cache[target] = acid.eval(fs.readFileSync(target, 'utf8'), {
+      import: createImport(path.dirname(target), env, cache),
       __proto__: env
     })
   }

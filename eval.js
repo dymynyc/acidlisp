@@ -265,6 +265,7 @@ function _ev(ast, scope) {
     if(symbol === syms.loop) {
         var test = ast[1]
         var body = ast[2]
+        value = 0
         while(ev(test, env)) {
           value = ev(body, env)
         }

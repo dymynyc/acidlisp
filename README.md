@@ -208,6 +208,13 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 22/2/2020
+
+I fixed the scope problem pretty easily to day.
+the problem was that quotes where transforming vars
+(to add hygene) but it wasn't traversing into def values
+(which can contain more defs)
+
 ### 21/4/2020
 
 okay more wrestling with macros. thought a lot about
@@ -215,6 +222,14 @@ how to do structs. implemented cons and other list stuff.
 was just about to have the parser do captures but
 hit a problem with modules. somehow the module falls
 off the scope? maybe it's time for stack traces!
+
+I figured out that the scope problem is about when a macro expands
+something. I'm writing macros that call macros several layers
+deep. The parse macros are calling string reading macros and
+cons creating macros. I think the problem is that it's passing
+the macros in unexpanded, then expanding them on the way out.
+But it does this in the scope of the macros just called, which
+can't see the scope the call was created in.
 
 
 ### 20/4/2020

@@ -220,3 +220,35 @@ var isExpressionTree = exports.isExpressionTree = function (tree) {
   else
     return tree.every(exports.isExpressionTree)
 }
+
+exports.meta = function meta (source, dest) {
+  if(!(isArray(source) && isArray(dest)))
+    return dest
+
+  if(!dest.meta) dest.meta = source.meta
+
+  return dest
+}
+
+function isBoundFun (s) {
+  return isSymbol(s) && s.description === 'bound_fun'
+}
+function isBoundMac (s) {
+  return isSymbol(s) && s.description === 'bound_mac'
+}
+
+exports.dump = function dump(scope) {
+  if(!scope || isBoundFun(scope) || isBoundMac(scope)|| isBasic(scope)|| isFun(scope) || isMac(scope) || isFunction(scope))
+    return scope
+  var o = {}
+  ;(function R (scope) {
+    if(!scope) return
+    if(isArray(scope)) return scope
+    else {
+      for(var k in scope)
+      o[k] = dump(scope[k])
+      R(scope.__proto__)
+    }
+  })(scope)
+  return o
+}

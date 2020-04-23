@@ -7,7 +7,7 @@ var boundm = Symbol('bound_mac')
 var {
   isSymbol, isFun, isBasic, isFunction, isArray, isObject,
   isMac, isDefined, parseFun,pretty,
-  stringify
+  stringify, meta, dump
 } = require('./util')
 
 function isBoundMac (m) {
@@ -16,36 +16,25 @@ function isBoundMac (m) {
 function isBoundFun (f) {
   return isArray(f) && boundf === f[0]
 }
-
 function isCore (c) {
   return syms[c.description] === c
 }
 
-function dump(scope) {
-  if(!scope || isBoundFun(scope) || isBoundMac(scope)|| isBasic(scope)|| isFun(scope) || isMac(scope) || isFunction(scope))
-    return scope
-  var o = {}
-  ;(function R (scope) {
-    if(!scope) return
-    if(isArray(scope)) return scope
-//    if(Array.isArray(scope)) {
-//      console.log("ARRAY?", scope)
-//      for(var i = 0; i < scope.length; i++) {
-//        o[scope[i][0].description] = dump(scope[i][1])
-//      }
-//    }
-    else {
-      for(var k in scope)
-      o[k] = dump(scope[k])
-      R(scope.__proto__)
-    }
-  })(scope)
-  return o
+function map(ary, fn, scope, skip) {
+  var r = []
+  skip = skip || []
+  for(var i = 0; i < skip.length; i++)
+    r.push(skip[i])
+
+  for(var i  = skip.length; i < ary.length; i++)
+    r.push(fn(ary[i], scope))
+
+  return meta(ary, r)
 }
 
 //inline scoped vars, but don't overwrite arguments
 //or locally defined vars
-function rebind(fn, scope) {
+var rebind = wrap(function (fn, scope) {
   scope = {__proto__: scope}
   function _rebind (ast) {
     if(
@@ -56,9 +45,9 @@ function rebind(fn, scope) {
     else if(isArray(ast)) {
       if(ast[0] === syms.def) {
         scope[ast[1].description] = ast[1]
-        return [ast[0], ast[1], _rebind(ast[2])]
+        return map(ast, _rebind, null, [ast[0], ast[1]])
       }
-      return ast.map(_rebind)
+      return map(ast, _rebind)
     }
     else
       return ast
@@ -67,8 +56,9 @@ function rebind(fn, scope) {
   for(var i = 0; i < args.length; i++)
     scope[args[i].description] = args[i]
 
-  return [fn[0], fn[1], fn[2], _rebind(fn[3]), fn[4]]
-}
+  return meta(fn, [fn[0], fn[1], fn[2], _rebind(fn[3]), fn[4]])
+}, false)
+
 function find (ary, iter) {
   var value
   for(var i = 0; i < ary.length; i++)
@@ -77,7 +67,6 @@ function find (ary, iter) {
 }
 
 function lookup(scope, sym, doThrow) {
-//  console.log("LOOKUP", sym, dump(scope))
   if(isArray(sym)) {
     var value = scope
     for(var i = 0; i < sym.length; i++) {
@@ -96,6 +85,8 @@ function lookup(scope, sym, doThrow) {
     }
     return value
   }
+  if(!isSymbol(sym))
+    throw new Error('cannot lookup non-symbol:'+sym)
   if(!isDefined(scope[sym.description])) {
     if(doThrow !== false)
       throw new Error('cannot resolve symbol:'+String(sym))
@@ -104,9 +95,19 @@ function lookup(scope, sym, doThrow) {
   return scope[sym.description]
 }
 
-var bind = wrap(_bind)
+var bind = wrap(_bind, false)
 
 function _bind (body, scope) {
+  var r = __bind(body, scope)
+  if(isArray(r)) r.meta = body.meta
+  return r
+}
+
+function isLookup(value) {
+  return (isArray(value) && value[0] === syms.get)
+}
+
+function __bind (body, scope) {
   var value
   if(Array.isArray(body)) {
     if(body[0] === syms.get)
@@ -121,18 +122,22 @@ function _bind (body, scope) {
       return ev(body[1], scope)
 
     if(isSymbol(body[0]) && !syms[body[0].description] && isBoundMac(value = lookup(scope, body[0], false))) {
-      var r = bind(call(value, body.slice(1).map(e => bind(e, scope)), scope), scope)
-      return r
+      return bind(call(value, body.slice(1).map(e => bind(e, scope)), scope), scope)
     }
 
     // allow if a bound mac is just returned inline
     var bm = isBoundMac(body[0]) ? body[0] : bind(body[0], scope)
     if(isBoundMac(bm)) {
-      var r =  bind(call(bm, body.slice(1).map(e => bind(e, scope))), scope)
-      return r
+      return bind(call(bm, body.slice(1).map(e => bind(e, scope))), scope)
     }
     else {
-      return [bm].concat(body.slice(1).map(b => bind(b, scope)))
+      if(isLookup(body[0])) {
+          bm = lookup(scope, body[0].slice(1))
+        if(!bm) throw new Error('could not resolve:'+pretty(body[0]))
+      }
+      var r = [bm || body[0]].concat(body.slice(1).map(b => bind(b, scope)))
+      r.meta = body.meta
+      return r
     }
   }
   else if(isSymbol(body) && isBasic(value = lookup(scope, body, false)))
@@ -142,15 +147,17 @@ function _bind (body, scope) {
 
 function bind_fun (fun, scope) {
   var {name,args,body} = parseFun(fun)
-  return [boundf, name, args, bind(body, scope), scope]
+  return meta(fun, [boundf, name, args, bind(body, scope), scope])
 }
 
 function bind_mac (mac, scope) {
   var {name,args,body} = parseFun(mac)
-  return [boundm, name, args, body, scope]
+  return meta(mac, [boundm, name, args, body, scope])
 }
 
-function call (fn, argv, callingScope) {
+var call = wrap(_call, true)
+
+function _call (fn, argv, callingScope) {
   if(isFunction(fn))
     return fn.apply(null, argv)
 
@@ -180,33 +187,47 @@ function call (fn, argv, callingScope) {
     return ev(body, scope)
 }
 
-function wrap (fn) {
+var stack = [], _stack = 0
+function wrap (fn, trace) {
   return function () {
-    var args = [].slice.call(arguments)
+    var args = [].slice.call(arguments), pushed
+    if(trace && args[0].meta) {
+      var pushed = true
+      stack.push(args[0])
+    }
     try {
-      return fn.apply(null, args)
+      var r = meta(args[0], fn.apply(null, args))
+      if(trace && pushed) stack.pop()
+      return r
     } catch (err) {
-      if(!err.depth)
-        err.depth = 1
-      else {
-        err.depth ++
-        if(err.depth < 10)
-          err.message = err.message + '\nat ' + fn.name + ':'+err.depth + '\n'+pretty(args[0])
+      if(err.acid) throw err
+      err.message =
+        'AcidError: ' + err.message + '\n' +
+          stack.slice().reverse().slice(0, 20)
+            .map((e) => {
+              m = e.meta
+              return m && '    at ' + e[0].description + ' ('+[m.filename, m.line, m.column].join(':')+')'
+            }).join('\n')+'\nJavaScriptError:'
+      err.acid = true
+      if(trace && pushed) {
+        stack.pop()
       }
       throw err
     }
   }
 }
 
-var ev = wrap(_ev)
+var ev = wrap(_ev, false)
 
 function _ev(ast, scope) {
   var value, env = scope
   //if we encounter a inline function, bind that are in scope.
+
   if(isBoundFun(ast)) return rebind(ast, scope)
   if(isBoundMac(ast)) return rebind(ast, scope)
   if(isFun(ast))      return bind_fun(ast, scope)
   if(isMac(ast))      return bind_mac(ast, scope)
+
   if(Array.isArray(ast)) {
     var symbol = ast[0]
     if(ast[0] === syms.block) {
@@ -216,9 +237,7 @@ function _ev(ast, scope) {
     }
     //modules test doesn't use this yet...
     if(ast[0] === syms.get) {
-      var v = lookup(scope, ast.slice(1))
-      return v
-//      throw new Error('get not supported yet')
+      return lookup(scope, ast.slice(1))
     }
     if(ast[0] === syms.def) {
       if(!isSymbol(ast[1])) throw new Error('attempted to define a non-symbol:'+stringify(ast))
@@ -295,16 +314,18 @@ function _ev(ast, scope) {
         else
           ev(ast[i], scope)
       }
+      exports.meta = {}
       return exports
     }
 
     if(isBoundFun(ast[0]) || isFunction(ast[0]) || isBoundMac(ast[0]))
       bf = ast[0]
-    else
+    else {
       bf = ev(ast[0], scope)
-
+    }
     if(isBoundMac(bf)) //XXX
       return ev(bind(call(bf, ast.slice(1).map(e => bind(e, scope)), scope), scope), scope)
+
     if(isBoundFun(bf) || isFunction(bf)) {
       return call(bf, ast.slice(1).map(v => ev(v, scope)))
     }
@@ -319,7 +340,7 @@ function quote (ast, scope) {
   if(!scope) throw new Error('scope missing')
   if(isArray(ast)) {
     if(ast[0] === syms.unquote) {
-      return ev(ast[1], scope)
+      return meta(ast, ev(ast[1], scope))
     }
     else if(ast[0] === syms.quote)
       return ast
@@ -329,11 +350,11 @@ function quote (ast, scope) {
       if(!scope.__hygene) scope.__hygene = {}
       var newSym = Symbol(ast[1].description + '__' + (++counter))
       scope.__hygene[ast[1].description] = newSym
-      //made this mistake sever times: after doing the map,
+      //made this mistake several times: after doing the map,
       //didn't traverse into the last arg!
-      return [ast[0], newSym, quote(ast[2], scope)]
+      return meta(ast[0], [ast[0], newSym, quote(ast[2], scope)])
     }
-    return ast.map(v => quote (v, scope))
+    return meta(ast, ast.map(v => quote (v, scope)))
   }
   else if(isSymbol(ast) && scope.__hygene)
     return scope.__hygene[ast.description] || ast

@@ -3,7 +3,7 @@ var {
   isDefined, isSymbol, isArray,
   isDef, isEmpty, isFunction, isNumber, isBound,
   eqSymbol, equals,
-  isExpressionTree, pretty
+  isExpressionTree, pretty, meta
 } = require('./util')
 
 var syms = require('./symbols')
@@ -71,13 +71,17 @@ function defaultFlatten (tree, n) {
     }
   })
   block.push(_tree)
-  return block
+  return meta(tree, block)
 
 }
 
 //this is working for current tests, but I am sure it has bugs
 
-var flatten = module.exports = function flatten (tree, n) {
+var flatten = module.exports = function (tree, n) {
+  return meta(tree, _flatten(tree, n))
+}
+
+function _flatten (tree, n) {
   n = n || 1
   if(isExpressionTree(tree)) return tree
 

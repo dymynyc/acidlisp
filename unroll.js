@@ -1,6 +1,6 @@
 var {isBoundFun,isBoundMac} = require('./eval')
 var syms = require('./symbols')
-var {isArray, isSymbol, isEmpty, pretty} = require('./util')
+var {isArray, isSymbol, isEmpty, pretty, meta} = require('./util')
 function find(obj, fn) {
   for(var k in obj)
     if(obj[k] === fn) return k
@@ -95,11 +95,11 @@ function unbind (fun, k) {
   if(!sym) throw new Error('neither a fun or a mac!:'+pretty(fun))
 
   if(fun[1]) //named
-    return [sym, fun[1], fun[2], fun[3]]
+    return meta(fun, [sym, fun[1], fun[2], fun[3]])
   else if(k)
     //TODO if the function is recursive, replace internal name for itself.
     //this is necessary for inline functions.
-    return [sym, k, fun[2], fun[3]]
+    return meta(fun, [sym, k, fun[2], fun[3]])
   else
     throw new Error('function key not provided')
 }

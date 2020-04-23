@@ -25,7 +25,7 @@ function createImport (dir, env, cache) {
     return cache[target] = acid.eval(fs.readFileSync(target, 'utf8'), {
       import: createImport(path.dirname(target), env, cache),
       __proto__: env
-    })
+    }, target)
   }
 }
 

@@ -20,26 +20,26 @@ function envify(ary) {
   return _env
 }
 
-function evalIf(src, env) {
+function evalIf(src, env, filename) {
   env = envify(env || createEnv())
-  return isString(src) ? ev(hydrate(parse(src), env), env) : src
+  return isString(src) ? ev(hydrate(parse(src, filename), env), env) : src
 }
 exports.eval = evalIf
 
-exports.js_eval = function (src, env) {
-  return eval(exports.js(src, env))
+exports.js_eval = function (src, env, filename) {
+  return eval(exports.js(src, env, filename))
 }
 
-exports.js = function (src, env) {
-  return js(unroll(evalIf(src, env)))
+exports.js = function (src, env, filename) {
+  return js(unroll(evalIf(src, env, filename)))
 }
 
-exports.wat = function (src, env) {
+exports.wat = function (src, env, filename) {
   env = env || createEnv()
-  return wat(unroll(evalIf(src, env)), env)
+  return wat(unroll(evalIf(src, env, filename)), env)
 }
 
-exports.wasm = function (src, env) {
+exports.wasm = function (src, env, filename) {
   env = env || createEnv()
-  return wat2wasm(exports.wat(src, env))
+  return wat2wasm(exports.wat(src, env, filename))
 }

@@ -4,8 +4,10 @@ var counter = 0
 var syms = require('./symbols')
 var boundf = Symbol('bound_fun')
 var boundm = Symbol('bound_mac')
+var errors = require('./errors')
+var wrap   = errors.wrap
 var {
-  isSymbol, isFun, isBasic, isFunction, isArray, isObject,
+  isSymbol, isFun, isBasic, isFunction, isArray, isObject, isNumber,
   isMac, isDefined, parseFun,pretty,
   stringify, meta, dump
 } = require('./util')
@@ -107,9 +109,11 @@ function isLookup(value) {
   return (isArray(value) && value[0] === syms.get)
 }
 
+
 function __bind (body, scope) {
   var value
   if(Array.isArray(body)) {
+    errors.checkArity(body)
     if(body[0] === syms.get)
       return lookup(scope, body.slice(1))
     if(body[0] === syms.mac)
@@ -187,35 +191,6 @@ function _call (fn, argv, callingScope) {
     return ev(body, scope)
 }
 
-var stack = [], _stack = 0
-function wrap (fn, trace) {
-  return function () {
-    var args = [].slice.call(arguments), pushed
-    if(trace && args[0].meta) {
-      var pushed = true
-      stack.push(args[0])
-    }
-    try {
-      var r = meta(args[0], fn.apply(null, args))
-      if(trace && pushed) stack.pop()
-      return r
-    } catch (err) {
-      if(err.acid) throw err
-      err.message =
-        'AcidError: ' + err.message + '\n' +
-          stack.slice().reverse().slice(0, 20)
-            .map((e) => {
-              m = e.meta
-              return m && '    at ' + e[0].description + ' ('+[m.filename, m.line, m.column].join(':')+')'
-            }).join('\n')+'\nJavaScriptError:'
-      err.acid = true
-      if(trace && pushed) {
-        stack.pop()
-      }
-      throw err
-    }
-  }
-}
 
 var ev = wrap(_ev, false)
 

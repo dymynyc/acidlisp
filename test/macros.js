@@ -5,7 +5,7 @@ var parse = require('../parse')
 var createEnv = require('../env')
 var {stringify, pretty} = require('../util')
 
-function call(mac, args) {
+function call(mac, args, I) {
   var scope = createEnv()
 //  scope.__proto__ = _scope
   mac = ev(parse(mac), scope)
@@ -15,8 +15,9 @@ function call(mac, args) {
 }
 
 tape('step by step macro eval', function (t) {
+  var i = 0
   function T (mac, args, expected, scope) {
-    t.equal(call(mac, '(' + args + ')', scope || {}), expected)
+    t.equal(call(mac, '(' + args + ')', scope || {}, 'macro_'+(i++)), expected)
   }
 
   T('(mac (x) &{set $x (add $x 1)})', 'z', '(set z (add z 1))')

@@ -1,15 +1,20 @@
 var fs = require('fs')
 var path = require('path')
 var parse = require('./parse')
-var filename = path.join(__dirname, 'lib', 'memory.al')
+//load a module, but do it like this
+//so it doesn't recursively load hydrate
+var filename = require('./resolve')
+  .defaultResolve('acid-memory', __dirname)
 var mem_ast = parse(fs.readFileSync(filename, 'utf8'), filename)
 var ev = require('./eval')
 var wrap = require('./wrap')
+
 var {isBuffer, isArray} = require('./util')
 
 module.exports = function (ast, env) {
   //initialize memory manager
   var mem = wrap(ev(mem_ast, env), env)
+
   var free = 0
   ;(function each (ast) {
     ast.forEach(function (v, i) {

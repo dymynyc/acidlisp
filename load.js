@@ -3,9 +3,7 @@ var acid = require('./')
 var path = require('path')
 var fs = require('fs')
 var createEnv = require('./env')
-var resolve = require('./resolve')(
-  'node_modules', '.al', JSON.parse, 'package.json'
-)
+var resolve = require('./resolve').defaultResolve
 var {
   pretty,stringify,isBuffer,isNumber,readBuffer
 } = require('./util')

@@ -1,6 +1,6 @@
 (module
   ;; string format: length(i32) data(bytes){length}
-  (def mem (import "./memory"))
+  (def mem (import "acid-memory"))
 
   (def min {fun [x y] (if (lt x y) x y)})
   (def length {mac [w] &(i32_load $w)})

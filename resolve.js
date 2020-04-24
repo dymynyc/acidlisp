@@ -94,3 +94,7 @@ module.exports = function (MODULES, EXT, PARSE, PKG) {
 
   return resolve
 }
+
+module.exports.defaultResolve = module.exports(
+  'node_modules', '.al', JSON.parse, 'package.json'
+)

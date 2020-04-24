@@ -301,7 +301,7 @@ function _ev(ast, scope) {
     if(isBoundMac(bf)) //XXX
       return ev(bind(call(bf, ast.slice(1).map(e => bind(e, scope)), scope), scope), scope)
 
-    if(isFunction(bf)) {
+    if(false && isFunction(bf)) {
       var args = ast.slice(1).map(v => ev(v, scope))
       try {
         return bf.apply(null, args)
@@ -310,8 +310,13 @@ function _ev(ast, scope) {
         throw errors.addAcidStackTrace(ast, err)
       }
     }
-    if(isBoundFun(bf)) {
-      return call(bf, ast.slice(1).map(v => ev(v, scope)))
+    if(isBoundFun(bf) || isFunction(bf)) {
+      try {
+        return call(bf, ast.slice(1).map(v => ev(v, scope)))
+      } catch (err) {
+        if(err.acid) throw err
+        throw errors.addAcidStackTrace(ast, err)
+      }
     }
     throw new Error('expected function:'+stringify(ast))
   }

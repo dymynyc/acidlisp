@@ -1,4 +1,4 @@
-var {isDefined} = require('./util')
+var {isDefined, readBuffer} = require('./util')
 module.exports = function (memory, globals, exports) {
   exports = exports || {}
   memory = memory || Buffer.alloc(0)
@@ -88,7 +88,7 @@ module.exports = function (memory, globals, exports) {
     return +(list.length === 0)
   }
   exports.log = function (str) {
-    console.error(str)
+    process.stderr.write(readBuffer(memory, str))
     return str
   }
 

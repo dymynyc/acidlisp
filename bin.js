@@ -35,8 +35,6 @@ if(!module.parent) {
   var cmd = argv.shift()
   var file = argv.shift()
 
-  console.error(cmd, file)
-
   var env = createEnv(Buffer.alloc(65536), {0:0})
   var load = createImport(process.cwd(), env)
   if(!file)
@@ -66,6 +64,5 @@ if(!module.parent) {
       console.error('unknown command:'+fn_name+', available commands:'+Object.keys(m).filter(e => isFunction(m[e])))
       process.exit(1)
     }
-
   }
 }

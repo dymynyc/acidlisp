@@ -162,9 +162,9 @@ function bind_mac (mac, scope) {
 var call = wrap(_call, true)
 
 function _call (fn, argv, callingScope) {
-  if(isFunction(fn))
+  if(isFunction(fn)) {
     return fn.apply(null, argv)
-
+  }
   if(fn[0] !== boundf && fn[0] !== boundm) throw new Error('expected bound function:' + stringify(fn))
   var scope = {__proto__: fn[4]}
   var args = fn[2], body = fn[3]
@@ -301,7 +301,16 @@ function _ev(ast, scope) {
     if(isBoundMac(bf)) //XXX
       return ev(bind(call(bf, ast.slice(1).map(e => bind(e, scope)), scope), scope), scope)
 
-    if(isBoundFun(bf) || isFunction(bf)) {
+    if(isFunction(bf)) {
+      var args = ast.slice(1).map(v => ev(v, scope))
+      try {
+        return bf.apply(null, args)
+      } catch (err) {
+        if(err.acid) throw err
+        throw errors.addAcidStackTrace(ast, err)
+      }
+    }
+    if(isBoundFun(bf)) {
       return call(bf, ast.slice(1).map(v => ev(v, scope)))
     }
     throw new Error('expected function:'+stringify(ast))

@@ -69,19 +69,22 @@ exports.wrap = function wrap (fn, trace) {
       return r
     } catch (err) {
       if(err.acid) throw err
-      err.message =
-        'AcidError: ' + err.message + '\n' +
-          stack.slice().reverse().slice(0, 20)
-            .map((e) => 
-              e && e.meta && toPosition(e[0].description, e.meta)
-            ).filter(Boolean).join('\n')+
-          '\nJavaScriptError:'
-
-      err.acid = true
-      if(trace && pushed) {
-        stack.pop()
-      }
+      err = exports.addAcidStackTrace(args[0], err)
+      if(trace && pushed) stack.pop()
       throw err
     }
   }
+}
+
+exports.addAcidStackTrace = function (ast, err) {
+  err.message =
+    'AcidError: ' + err.message + '\n' +
+      (stack.length ? stack.slice() : [ast])
+      .reverse().slice(0, 20)
+        .map((e) => 
+          e && e.meta && toPosition(e[0].description, e.meta)
+        ).filter(Boolean).join('\n')+
+      '\nJavaScriptError:'
+  err.acid = true
+  return err
 }

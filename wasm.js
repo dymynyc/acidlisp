@@ -4,7 +4,7 @@ module.exports = function loadWasm(buf) {
   var instance = new WebAssembly.Instance(m, {
     system: {
        log: function (p) {
-        console.error(memory.slice(p+4, p+4+memory.readUInt32LE(p)).toString())
+        process.stderr.write(memory.slice(p+4, p+4+memory.readUInt32LE(p)).toString())
         return p
       }
     }

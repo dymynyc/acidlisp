@@ -5,6 +5,7 @@ var {
 } = require('./util')
 
 function toPosition(name, meta) {
+  name = isSymbol(name) ? name.description : name
   return !meta ? '' :
     '    at ' +name+' ('+meta.filename+':'+meta.line+':'+meta.column+')'
 }
@@ -28,12 +29,12 @@ var lengths = {
 }
 
 exports.checkArity = function (ast) {
-  if(!isArray(ast) && !isSymbol(ast[0])) return
+  if(!isArray(ast) || !isSymbol(ast[0])) return
   var name = ast[0].description
   var length = lengths[name]
   if(!length) return
   var a_length = ast.length-1
-  var pos =  toPosition(name, ast.meta)
+  var pos =  toPosition(ast[0], ast.meta)
 
   if(isNumber(length))
     if(length !== a_length) throw new Error(
@@ -82,7 +83,7 @@ exports.addAcidStackTrace = function (ast, err) {
       (stack.length ? stack.slice() : [ast])
       .reverse().slice(0, 20)
         .map((e) => 
-          e && e.meta && toPosition(e[0].description, e.meta)
+          e && e.meta && toPosition(e[0], e.meta)
         ).filter(Boolean).join('\n')+
       '\nJavaScriptError:'
   err.acid = true

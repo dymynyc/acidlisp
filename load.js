@@ -1,4 +1,3 @@
-#! /usr/bin/env node
 var acid = require('./')
 var path = require('path')
 var fs = require('fs')

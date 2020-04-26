@@ -1,6 +1,7 @@
 var {
   isDefined, isSymbol, isArray, isBuffer,
   isDef, isFun, isEmpty, isFunction, isNumber, isBound, isString,
+  isSystemFun, readBuffer,
   eqSymbol, equals, stringify,
   getFunctions, getStrings,
   isExpressionTree,
@@ -60,6 +61,14 @@ function getDefs (ast, defs) {
   return Object.keys(defs).map(k => Symbol(k))
 }
 
+function getImports (ast) {
+  var imports = []
+  for(var i = 0; i < ast.length; i++)
+    if(ast[i][0] === syms.def && isSystemFun(ast[i][2]))
+      imports.push(ast[i])
+  return imports
+}
+
 function indent (src) {
   return src.split('\n').map(line => '  ' + line).join('\n')
 }
@@ -105,6 +114,7 @@ function compile (ast, isBlock) {
     return w('i32.const', ast) //TODO other number types
   else if(isSymbol(ast))
     return w('local.get', $(ast))
+  else if(ast === null) return compile(0)
   else
     throw new Error('cannot compile unsupported type:'+stringify(ast))
 
@@ -123,17 +133,18 @@ function assertRef (r) {
     throw new Error('expected function ref:'+stringify(r))
 }
 
-function getLiterals (ast) {
-  for(var i = 0; i < ast.length; i++) {
-    if(isDef(ast[i][0]) && eqSymbol(ast[i][1], '$LITERALS$'))
-      return literals = ast[i][2].slice(1) //slice to remove [list,...]
-  }
-  return []
-}
-
+//function getLiterals (ast) {
+//  for(var i = 0; i < ast.length; i++) {
+//    if(isDef(ast[i][0]) && eqSymbol(ast[i][1], '$LITERALS$'))
+//      return literals = ast[i][2].slice(1) //slice to remove [list,...]
+//  }
+//  return []
+//}
+//
 exports.module = function (ast, env) {
+  var imports = getImports(ast)
   var funs = getFunctions(ast)
-  var literals = getLiterals(ast)
+//  var literals = getLiterals(ast)
   var ptr = 0, free = 0
   pointers = []
   env = env || {}
@@ -144,11 +155,10 @@ exports.module = function (ast, env) {
 
   free = ptr //where the next piece of data should go
   var ref
-  return w('module', ['\n',
-    w('import', ['"system"',  '"log"',
-      w('func', ['$sys_log',
-        w('param', ['i32']), w('result', ['i32'])
-      ])]),
+  return w('module\n', [
+    (imports.length ?
+      imports.map(e => exports.system_fun(e, env))
+      .join('\n'): '') + '\n',
     memory && w('memory', [w('export', '"memory"'), 1]),
     //a global variable that points to the start of the free data.
     //data, literals (strings so far)
@@ -157,6 +167,7 @@ exports.module = function (ast, env) {
     w('data',
       [0, w('offset', compile(0)), wasmString.encode(data)]
     ) +'\n'|| '',
+
 
     //functions
     funs.map((e, i) => exports.fun(e.slice(1))).join('\n\n') + '\n',
@@ -192,6 +203,19 @@ exports.fun = function (ast) {
   ])
 }
 
+exports.system_fun = function (ast, env) {
+  var name = ast[1]
+  var fun = ast[2]
+  var module = wasmString.encode(readBuffer(env.memory, fun[3][0]))
+  var m_name = wasmString.encode(readBuffer(env.memory, fun[3][1]))
+  var params = fun[2]
+  return w('import', [module, m_name,
+    w('func', [$(name), params.map(e => w('param', 'i32'))
+      .concat(w('result', 'i32')).join(' ')])
+  ])
+
+}
+
 exports.if = function ([test, then, e_then]) {
   if(e_then)
     return w('if', [
@@ -225,20 +249,26 @@ function pairOp (name) {
   }
 }
 
-exports.add = recurseOp('i32.add')
-exports.sub = recurseOp('i32.sub')
-exports.mul = recurseOp('i32.mul')
-exports.div = recurseOp('i32.div_s')
-exports.and = recurseOp('i32.and')
-exports.or  = recurseOp('i32.or')
-exports.mod = pairOp('i32.rem_s')
+exports.add   = recurseOp('i32.add')
+exports.sub   = recurseOp('i32.sub')
+exports.mul   = recurseOp('i32.mul')
+exports.div   = recurseOp('i32.div_s')
+exports.and   = recurseOp('i32.and')
+exports.or    = recurseOp('i32.or')
+exports.mod   = pairOp('i32.rem_s')
 
-exports.lt  = pairOp('i32.lt_s')
-exports.lte = pairOp('i32.le_s')
-exports.gt  = pairOp('i32.gt_s')
-exports.gte = pairOp('i32.ge_s')
-exports.eq  = pairOp('i32.eq')
-exports.neq = pairOp('i32.ne')
+exports.lt    = pairOp('i32.lt_s')
+exports.lte   = pairOp('i32.le_s')
+exports.gt    = pairOp('i32.gt_s')
+exports.gte   = pairOp('i32.ge_s')
+exports.eq    = pairOp('i32.eq')
+exports.neq   = pairOp('i32.ne')
+exports.shl   = pairOp('i32.shl')
+exports.shr   = pairOp('i32.shr_u')
+exports.shr_s = pairOp('i32.shr_s')
+exports.xor   = pairOp('i32.xor')
+exports.rotl  = pairOp('i32.rotl')
+exports.rotr  = pairOp('i32.rotr')
 
 exports.block = function (args, isBlock) {
   if(isBlock === undefined) throw new Error('isBlock is undefined')
@@ -305,8 +335,4 @@ exports.get_global = function ([index, value]) {
 exports.fatal = function ([msg]) {
   //todo: pass message back to user api?
   return '(unreachable)'
-}
-
-exports.log = function ([ptr]) {
-  return w('call', ['$sys_log', compile(ptr)])
 }

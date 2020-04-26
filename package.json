@@ -8,6 +8,7 @@
     "url": "git://github.com/dominictarr/acidlisp.git"
   },
   "dependencies": {
+    "faucet": "0.0.1",
     "minimist": "^1.2.5",
     "stack-expression": "^1.6.1",
     "wasm-string": "^1.0.1"
@@ -16,7 +17,8 @@
     "tape": "^4.13.2"
   },
   "scripts": {
-    "test": "tape test/*.js"
+    "test": "tape test/*.*",
+    "ecosystem": "tape node_modules/acid-*/test/*.*"
   },
   "bin": "./load.js",
   "author": "Dominic Tarr @EMovhfIrFk4NihAKnRNhrfRaqIhBv1Wj8pTxJNgvCCY=.ed25519",

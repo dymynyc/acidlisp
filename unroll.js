@@ -1,6 +1,8 @@
-var {isBoundFun,isBoundMac} = require('./eval')
 var syms = require('./symbols')
-var {isArray, isSymbol, isEmpty, pretty, meta} = require('./util')
+var {
+  isArray, isSymbol, isEmpty, pretty, meta,
+  isBoundFun,isBoundMac,isSystemFun
+} = require('./util')
 function find(obj, fn) {
   for(var k in obj)
     if(obj[k] === fn) return k
@@ -30,6 +32,9 @@ function unroll (fun, funs, key) {
     )
   }
   funs[getName()] = fun
+
+  if(isSystemFun(fun)) return funs //system funs don't have a body
+
   var body = fun[3]
   if(isBoundFun(body)) {
     if(k = find(funs, body)) fun[3] = k
@@ -47,6 +52,10 @@ function unroll (fun, funs, key) {
       }
     }
     var fn
+    if(isSymbol(ast[0]) && isSystemFun(fn = scope[ast[0].description])) {
+      if(!find(funs, fn))
+        unroll(fn, funs, ast[0].description)
+    }
     if(isSymbol(ast[0]) && isBoundFun(fn = scope[ast[0].description])) {
       if(!find(funs, fn))
         unroll(fn, funs, ast[0].description)
@@ -86,15 +95,16 @@ function checkUnbound (fn, _scope) {
       if(isArray(v)) R(v)
     }
   })(fn[3])
-  console.error(Object.keys(scope).join(', '))
   return isEmpty(unbound) ? null : unbound
 }
 
 function unbind (fun, k) {
+  if(isSystemFun(fun)) return meta(fun, [fun[0], k, fun[2], fun[3]])
+
   var sym = isBoundFun(fun) ? syms.fun : isBoundMac(fun) ? syms.mac : null
   if(!sym) throw new Error('neither a fun or a mac!:'+pretty(fun))
 
-  if(fun[1]) //named
+  if(fun[1]) //named 
     return meta(fun, [sym, fun[1], fun[2], fun[3]])
   else if(k)
     //TODO if the function is recursive, replace internal name for itself.

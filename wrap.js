@@ -1,5 +1,5 @@
 var {
-  isFun, isSymbol, parseFun, toEnv
+  isFun, isSymbol, parseFun, toEnv, isBoundFun
 } = require('./util')
 
 var ev = require('./eval')
@@ -9,11 +9,10 @@ function wrapFn (fun, env) {
   return function () {
     return ev.call(fun, [].slice.call(arguments), env)
   }
-  
 }
 
 exports = module.exports = function (tree, env) {
-  if(isFun(tree)) {
+  if(isFun(tree) || isBoundFun(tree)) {
     var fn = wrapFn(tree, env)
     fn.memory = env.memory
     return fn

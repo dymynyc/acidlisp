@@ -2,24 +2,23 @@
 //so that they are always guaranted unique.
 var counter = 0
 var syms = require('./symbols')
-var boundf = Symbol('bound_fun')
-var boundm = Symbol('bound_mac')
 var errors = require('./errors')
 var wrap   = errors.wrap
+
+var {
+  bound_fun: boundf,
+  bound_mac: boundm,
+  system_fun
+}  = require('./internal')
+
 var {
   isSymbol, isFun, isBasic, isFunction, isArray, isObject, isNumber,
-  isMac, isDefined, parseFun,pretty,
+  isMac, isDefined, parseFun,pretty, isBoundFun, isBoundMac, isSystemFun,
   stringify, meta, dump
 } = require('./util')
 
-function isBoundMac (m) {
-  return isArray(m) && boundm === m[0]
-}
-function isBoundFun (f) {
-  return isArray(f) && boundf === f[0]
-}
 function isCore (c) {
-  return syms[c.description] === c
+  return isSymbol(c) && syms[c.description] === c
 }
 
 function map(ary, fn, scope, skip) {
@@ -124,6 +123,8 @@ function __bind (body, scope) {
       return quote(body, scope)
     else if(body[0] === syms.unquote)
       return ev(body[1], scope)
+    else if(body[0] === syms.system_fun)
+      return body
 
     if(isSymbol(body[0]) && !syms[body[0].description] && isBoundMac(value = lookup(scope, body[0], false))) {
       return bind(call(value, body.slice(1).map(e => bind(e, scope)), scope), scope)
@@ -159,17 +160,40 @@ function bind_mac (mac, scope) {
   return meta(mac, [boundm, name, args, body, scope])
 }
 
+function toName (sym) {
+  return isSymbol(sym) ? sym.description : String(sym)
+}
+
+function assertArgs(type, name, args, argv) {
+  if(args.length != argv.length)
+    throw new Error(
+      toName(type) + ' ' +toName(name||'') +' expected '+
+        args.length + ' but got:'+argv.length + '\n' +
+      'defined as:' +stringify([type, name, args]) + '\n' + 
+      'but passed:'+ pretty(argv)
+    )
+}
+
 var call = wrap(_call, true)
 
 function _call (fn, argv, callingScope) {
   if(isFunction(fn)) {
     return fn.apply(null, argv)
   }
-  if(fn[0] !== boundf && fn[0] !== boundm) throw new Error('expected bound function:' + stringify(fn))
-  var scope = {__proto__: fn[4]}
-  var args = fn[2], body = fn[3]
+  if(!isBoundMac(fn) && !isBoundFun(fn) && !isSystemFun(fn)) throw new Error('expected bound function:' + stringify(fn))
+  var args = fn[2], body = fn[3], name = fn[1]
   if(!isArray(args))
     throw new Error('args was wrong:' + stringify([name, args, body]))
+  if(args.length != argv.length)
+    throw new Error('expected:'+args.length+' but called with:'+argv.length)
+  if(isSystemFun(fn)) {
+    return fn[4].system_call(fn[3][0], fn[3][1], argv)
+  }
+
+  var scope = {__proto__: fn[4]}
+
+  assertArgs(fn[0], fn[1], args, argv)
+
   for(var i = 0; i < args.length; i++)
     scope[args[i].description] = argv[i]
   if(fn[1])
@@ -179,13 +203,7 @@ function _call (fn, argv, callingScope) {
     var r = ev(body, scope)
     //aha! because r is evaluated in the same scope it was called
     //in it can continue calling itself
-    try {
-      return bind(r, scope)
-    }
-    catch(err) {
-      console.error('problem binding', dump(callingScope))
-      throw err
-    }
+    return bind(r, scope)
   }
   else
     return ev(body, scope)
@@ -272,22 +290,35 @@ function _ev(ast, scope) {
     if(ast[0] === syms.module) {
       var exports = [], single = null
       for(var i = 1; i < ast.length; i++) {
-        if(isArray(ast[i]) && ast[i][0] === syms.export) {
-          if(isSymbol(ast[i][1]) && ast[i].length == 3) {
-            if(single === true)
-              throw new Error('already exported a single symbol, cannot export multiple')
-            single = false
-            exports.push([ast[i][1], ev(ast[i][2], scope)])
+        if(isArray(ast[i])) {
+          var ary = ast[i]
+          var sym = ary[0]
+
+          if(sym === syms.def && isArray(ary[2]) &&
+            ary[2][0] === syms.system) {
+            //make the pattern look like a bound function
+            var sc = scope[ary[1].description] =
+              [system_fun, null, ary[2][3], [ary[2][1], ary[2][2]], scope]
+            sc.meta = ary[2].meta
           }
-          else {
-            if(single !== null)
-              throw new Error('already exported ' + (single ? 'single' : 'multiple') + ' cannot export an additional single value:'+stringify(ast))
-            single = true
-            exports = ev(ast[i][1], scope)
+          else if(sym === syms.export) {
+            if(isSymbol(ast[i][1]) && ast[i].length == 3) {
+              if(single === true)
+                throw new Error('already exported a single symbol, cannot export multiple')
+              single = false
+              exports.push([ast[i][1], ev(ast[i][2], scope)])
+            }
+            else {
+              if(single !== null)
+                throw new Error('already exported ' + (single ? 'single' : 'multiple') + ' cannot export an additional single value:'+stringify(ast))
+              single = true
+              exports = ev(ast[i][1], scope)
+            }
           }
+          else
+            ev(ast[i], scope)
         }
-        else
-          ev(ast[i], scope)
+        else ev(ast[i], scope)
       }
       exports.meta = {}
       return exports
@@ -301,16 +332,7 @@ function _ev(ast, scope) {
     if(isBoundMac(bf)) //XXX
       return ev(bind(call(bf, ast.slice(1).map(e => bind(e, scope)), scope), scope), scope)
 
-    if(false && isFunction(bf)) {
-      var args = ast.slice(1).map(v => ev(v, scope))
-      try {
-        return bf.apply(null, args)
-      } catch (err) {
-        if(err.acid) throw err
-        throw errors.addAcidStackTrace(ast, err)
-      }
-    }
-    if(isBoundFun(bf) || isFunction(bf)) {
+    if(isBoundFun(bf) || isFunction(bf) || isSystemFun(bf)) {
       try {
         return call(bf, ast.slice(1).map(v => ev(v, scope)))
       } catch (err) {
@@ -356,5 +378,3 @@ exports.call = function (fun, args) {
 exports.eval = ev
 exports.quote = quote
 exports.bind = bind
-exports.isBoundMac = isBoundMac
-exports.isBoundFun = isBoundFun

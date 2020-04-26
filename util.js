@@ -1,5 +1,7 @@
-var syms = require('./symbols')
+var syms       = require('./symbols')
+var internal   = require('./internal')
 var wasmString = require('wasm-string')
+var internal   = require('./internal')
 
 var isArray = Array.isArray
 
@@ -33,6 +35,18 @@ function isFun (f) {
 
 function isMac (m) {
   return isArray(m) && m[0] === syms.mac
+}
+
+function isBoundFun (ary) {
+  return isArray(ary) && ary[0] === internal.bound_fun
+}
+
+function isBoundMac (ary) {
+  return isArray(ary) && ary[0] === internal.bound_mac
+}
+
+function isSystemFun(ary) {
+  return isArray(ary) && ary[0] === internal.system_fun
 }
 
 function isNumber(n) {
@@ -77,24 +91,27 @@ function equals (a, b) {
   return a === b
 }
 
-exports.isDefined  = isDefined
-exports.isSymbol   = isSymbol
-exports.isArray    = isArray
-exports.isObject   = isObject
-exports.isDef      = isDef
-exports.isEmpty    = isEmpty
-exports.isNull     = isNull
-exports.isBoolean  = isBoolean
-exports.isString   = isString
-exports.isBuffer   = isBuffer
-exports.isFunction = isFunction
-exports.isFun      = isFun
-exports.isMac      = isMac
-exports.isNumber   = isNumber
-exports.isBasic    = isBasic
-exports.isBound    = isBound
-exports.eqSymbol   = eqSymbol
-exports.equals     = equals
+exports.isDefined   = isDefined
+exports.isSymbol    = isSymbol
+exports.isArray     = isArray
+exports.isObject    = isObject
+exports.isDef       = isDef
+exports.isEmpty     = isEmpty
+exports.isNull      = isNull
+exports.isBoolean   = isBoolean
+exports.isString    = isString
+exports.isBuffer    = isBuffer
+exports.isFunction  = isFunction
+exports.isFun       = isFun
+exports.isMac       = isMac
+exports.isBoundFun  = isBoundFun
+exports.isBoundMac  = isBoundMac
+exports.isSystemFun = isSystemFun
+exports.isNumber    = isNumber
+exports.isBasic     = isBasic
+exports.isBound     = isBound
+exports.eqSymbol    = eqSymbol
+exports.equals      = equals
 
 exports.clone = function clone (ast) {
   if(Array.isArray(ast))
@@ -188,6 +205,10 @@ function getThings (tree, isThing, things) {
 exports.getFunctions = function (tree, funs) {
   return getThings(tree, isFun, funs)
 }
+//exports.getFunctions = function (tree, funs) {
+//  return getThings(tree, , funs)
+//}
+
 exports.getStrings = function (tree, strings) {
   return getThings(tree, isBuffer, strings)
 }
@@ -228,13 +249,6 @@ exports.meta = function meta (source, dest) {
   if(!dest.meta) dest.meta = source.meta
 
   return dest
-}
-
-function isBoundFun (s) {
-  return isSymbol(s) && s.description === 'bound_fun'
-}
-function isBoundMac (s) {
-  return isSymbol(s) && s.description === 'bound_mac'
 }
 
 exports.dump = function dump(scope) {

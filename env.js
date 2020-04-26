@@ -1,5 +1,5 @@
 var {isDefined, readBuffer} = require('./util')
-module.exports = function (memory, globals, exports) {
+module.exports = function (memory, globals, exports, imports) {
   exports = exports || {}
   memory = memory || Buffer.alloc(0)
   globals = globals || {0:0}
@@ -41,6 +41,13 @@ module.exports = function (memory, globals, exports) {
   exports.neq = function (a, b) {
     return +(a !== b)
   }
+  exports.shl = function (a, b) {
+    return +(a << b)
+  }
+  exports.shr = function (a, b) {
+    return +(a >> b)
+  }
+
   exports.fatal = function (m) {
     throw new Error(m)
   }
@@ -87,10 +94,21 @@ module.exports = function (memory, globals, exports) {
   exports.is_empty = function (list) {
     return +(list.length === 0)
   }
-  exports.log = function (str) {
-    process.stderr.write(readBuffer(memory, str))
-    return str
-  }
+
+  //TODO: this shouldn't actually be on env.
+  //      need another thing to pass around the evaluator
+  //shouldn't be calling system args during compile time
+  //I guess it's okay if you run it inside interpreter though.
+  exports.system_call = function (module, name, args) {
+      module = readBuffer(memory, module).toString()
+      name = readBuffer(memory, name).toString()
+      if(!imports[module])
+        throw new Error('system module:'+module+' is not provided')
+      if(!imports[module][name])
+        throw new Error('system module:'+module+' does not provide function:'+ name)
+      console.log('call', module, name, args)
+      return imports[module][name].apply(null, args)
+    }
 
   return exports
 }

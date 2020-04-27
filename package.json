@@ -2,10 +2,10 @@
   "name": "acidlisp",
   "description": "a lisp for webassembly",
   "version": "1.0.0",
-  "homepage": "https://github.com/dominictarr/acidlisp",
+  "homepage": "https://github.com/dymynyc/acidlisp",
   "repository": {
     "type": "git",
-    "url": "git://github.com/dominictarr/acidlisp.git"
+    "url": "git://github.com/dymynyc/acidlisp.git"
   },
   "dependencies": {
     "faucet": "0.0.1",
@@ -21,6 +21,6 @@
     "ecosystem": "tape node_modules/acid-*/test/*.*"
   },
   "bin": "./load.js",
-  "author": "Dominic Tarr @EMovhfIrFk4NihAKnRNhrfRaqIhBv1Wj8pTxJNgvCCY=.ed25519",
+  "author": "@EMovhfIrFk4NihAKnRNhrfRaqIhBv1Wj8pTxJNgvCCY=.ed25519",
   "license": "MIT"
 }

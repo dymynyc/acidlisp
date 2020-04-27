@@ -207,7 +207,7 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
-### 22/2/2020
+### 22/4/2020
 
 I fixed the scope problem pretty easily to day.
 the problem was that quotes where transforming vars

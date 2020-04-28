@@ -20,7 +20,7 @@
     "test": "tape test/*.*",
     "ecosystem": "tape node_modules/acid-*/test/*.*"
   },
-  "bin": "./load.js",
+  "bin": "./bin.js",
   "author": "@EMovhfIrFk4NihAKnRNhrfRaqIhBv1Wj8pTxJNgvCCY=.ed25519",
   "license": "MIT"
 }

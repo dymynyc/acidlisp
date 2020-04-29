@@ -10,7 +10,9 @@ var {
   isString, isArray
 } = require('./util')
 
-exports.bind = ev.band
+exports.bind = function (ast, env) {
+  return ev.bind(ast, envify(env))
+}
 exports.parse = parse
 
 function envify(ary) {

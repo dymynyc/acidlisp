@@ -1,3 +1,7 @@
+//could fix this so it just happens in the parser.
+//but once we switch to a parser written in wasm
+//that won't matter.
+
 var fs = require('fs')
 var path = require('path')
 var parse = require('./parse')

@@ -1,4 +1,4 @@
-var {isDefined, readBuffer} = require('./util')
+var {isDefined, readBuffer, isArray} = require('./util')
 module.exports = function (memory, globals, exports, imports) {
   exports = exports || {}
   memory = memory || Buffer.alloc(0)
@@ -85,6 +85,9 @@ module.exports = function (memory, globals, exports, imports) {
   exports.cons = function (a, b) {
     return [a].concat(b)
   }
+  exports.reverse = function (a) {
+    return a.slice().reverse()
+  }
   exports.cat = function (a, b) {
     return a.concat(b)
   }
@@ -93,6 +96,9 @@ module.exports = function (memory, globals, exports, imports) {
   }
   exports.is_empty = function (list) {
     return +(list.length === 0)
+  }
+  exports.is_list = function (list) {
+    return +isArray(list)
   }
 
   //TODO: this shouldn't actually be on env.

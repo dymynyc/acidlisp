@@ -5,7 +5,7 @@ var {
 } = require('./util')
 
 function toPosition(name, meta) {
-  name = isSymbol(name) ? name.description : name
+  name = isSymbol(name) ? name.description : stringify(name)
   return !meta ? '' :
     '    at ' +name+' ('+meta.filename+':'+meta.line+':'+meta.column+')'
 }

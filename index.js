@@ -39,7 +39,7 @@ exports.wat = function (src, env, filename) {
   return wat(unroll(evalIf(src, env, filename)), env)
 }
 
-exports.wasm = function (src, env, filename) {
+exports.wasm = function (src, env, filename, imports) {
   env = env || createEnv()
-  return wat2wasm(exports.wat(src, env, filename))
+  return wat2wasm(exports.wat(src, env, filename), imports)
 }

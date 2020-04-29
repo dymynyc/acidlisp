@@ -1,18 +1,14 @@
-module.exports = function loadWasm(buf) {
+module.exports = function loadWasm(buf, imports) {
   var m = new WebAssembly.Module(buf)
   var memory
-  var instance = new WebAssembly.Instance(m, {
-    system: {
-       log: function (p) {
-          process.stderr.write(memory.slice(p+4, p+4+memory.readUInt32LE(p)).toString())
-        return p
-      }
-    }
-  })
+  var sys = require('./system')
+  var instance = new WebAssembly.Instance(m, imports || {})
+
+  sys.exports = instance.exports
 
   if(instance.exports.memory)
     memory = Buffer.from(instance.exports.memory.buffer)
-
+  sys.memory = memory
   if(instance.exports.ready)
     instance.exports.ready()
 
@@ -31,6 +27,4 @@ module.exports = function loadWasm(buf) {
     o.memory = memory
     return o
   }
-
-
 }

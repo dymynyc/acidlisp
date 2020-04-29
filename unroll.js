@@ -45,20 +45,21 @@ function unroll (fun, funs, key) {
   var scope = fun[4]
   ;(function R (ast) {
     if(isBoundFun(ast[0])) {
-      if(k = find(funs, ast[0])) ast[0] = k
+      if(k = find(funs, ast[0])) ast[0] = Symbol(k)
       else {
         unroll(ast[0], funs)
         ast[0] = Symbol(find(funs, ast[0]))
       }
     }
     var fn
-    if(isSymbol(ast[0]) && isSystemFun(fn = scope[ast[0].description])) {
+    var sym = ast[0]
+    if(isSymbol(sym) && isSystemFun(fn = scope[sym.description])) {
       if(!find(funs, fn))
-        unroll(fn, funs, ast[0].description)
+        unroll(fn, funs, sym.description)
     }
-    if(isSymbol(ast[0]) && isBoundFun(fn = scope[ast[0].description])) {
+    if(isSymbol(sym) && isBoundFun(fn = scope[sym.description])) {
       if(!find(funs, fn))
-        unroll(fn, funs, ast[0].description)
+        unroll(fn, funs, sym.description)
     }
     else if(isBoundMac(fn))
       throw new Error('macros should be gone by unroll time:'+pretty(fn))
@@ -104,7 +105,7 @@ function unbind (fun, k) {
   var sym = isBoundFun(fun) ? syms.fun : isBoundMac(fun) ? syms.mac : null
   if(!sym) throw new Error('neither a fun or a mac!:'+pretty(fun))
 
-  if(fun[1]) //named 
+  if(fun[1]) //named
     return meta(fun, [sym, fun[1], fun[2], fun[3]])
   else if(k)
     //TODO if the function is recursive, replace internal name for itself.
@@ -121,6 +122,11 @@ function assertUnbound(funs) {
     if(v) throw new Error('found unbound variables:'+Object.keys(v).join(', ') + ' in fun:'+(fn[1]||k))
   }
 
+}
+
+function log(n) {
+  console.error(n)
+  return n
 }
 
 module.exports = function (funs) {

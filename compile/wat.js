@@ -100,7 +100,7 @@ function compile (ast, isBlock) {
     //first, check if it's a core method
     var fn_name = ast[0]
     if(!isSymbol(fn_name))
-      throw new Error('name is non-symbol:'+pretty(ast) + ' at:'+ast.start)
+      throw new Error('name is non-symbol:'+pretty(ast) + ' at:'+JSON.stringify(ast.meta))
     var fn = exports[fn_name.description]
     if(fn) {
       if(!isFunction(fn)) throw new Error('cannot compile:'+fn_name.description)

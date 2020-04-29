@@ -207,6 +207,42 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 29/4/2020
+
+The last couple of days I've been working on IO.
+I can't use WASI because it's blocking. Those apis won't well on the web.
+And would you want blocking api's anyway? Now I'm getting into
+serious coding with acid, I'm learning which things need the most
+improvement. One thing is that and is wrong. it's bitwise and, not
+logical and. This caused me several hours of extra debugging!
+
+The IO pattern I came up with is designed to give as much freedom
+to the implementer of the wasm. It should be easy to interface
+with from C or Rust etc. But it's not exactly easy.
+
+This has all given me some good ideas though:
+* can I reimplement most of the compiler just with macros?
+  I think I can replace flatten with macros. That means I can
+  start implementing acid in acid.
+* I know I'm gonna need types. If I had a function map lookup
+  get an array of functions, then call the one that matches the
+  call signature, then I could have variable arguments. (aka overloading)
+* Also, the binary format is much closer to the stack, not the s-exp
+  format, so if flatten produces that it would be much easier
+  to compile (wouldn't need wat2wasm then!)
+
+I experimented with using macros to do the transform to keep
+everything expressions, _and_ I figured out the algorithm
+to flatten the ast into the stack form. it was easy. that means
+outputting the binary format won't be very hard!
+
+I also started thinking that maybe every struct should have a pointer
+to it's class (i.e. a schema, of the fields) this would add 4 bytes
+of overhead per object, but enable run time type checks, theirfore,
+reflection. I wanted it to feel dynamic. Pretty sure I need this
+for the interpreter anyway. It would also enable garbage collection.
+I don't want to enforce GC but sometimes it's useful.
+
 ### 22/4/2020
 
 I fixed the scope problem pretty easily to day.

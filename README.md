@@ -207,6 +207,17 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 30/4/2020
+
+via a very close reading of the spec, while attempting
+to write a binary parser, I realized that blocks have types!
+if you give it a type it becomes an expression. this means
+I can delete flatten.js
+
+tried to install wasmer... didn't work. I think this is about
+my computer though. but still for fuck sake why is installing
+some software so hard!?
+
 ### 29/4/2020
 
 The last couple of days I've been working on IO.
@@ -242,6 +253,11 @@ of overhead per object, but enable run time type checks, theirfore,
 reflection. I wanted it to feel dynamic. Pretty sure I need this
 for the interpreter anyway. It would also enable garbage collection.
 I don't want to enforce GC but sometimes it's useful.
+
+I say "class" but of course I'm not gonna have actual class definitons.
+that would be most uncool. obviously you just create object literals
+and the "classes" are implied. This would also work for creating
+closure scopes, when needed.
 
 ### 22/4/2020
 

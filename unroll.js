@@ -1,8 +1,11 @@
 var syms = require('./symbols')
 var {
   isArray, isSymbol, isEmpty, pretty, meta,
-  isBoundFun,isBoundMac,isSystemFun
+  isBoundFun, isBoundMac, isSystemFun, isCore
 } = require('./util')
+
+var lookup = require('./lookup')
+
 function find(obj, fn) {
   for(var k in obj)
     if(obj[k] === fn) return k
@@ -53,13 +56,15 @@ function unroll (fun, funs, key) {
     }
     var fn
     var sym = ast[0]
-    if(isSymbol(sym) && isSystemFun(fn = scope[sym.description])) {
-      if(!find(funs, fn))
-        unroll(fn, funs, sym.description)
-    }
-    if(isSymbol(sym) && isBoundFun(fn = scope[sym.description])) {
-      if(!find(funs, fn))
-        unroll(fn, funs, sym.description)
+    if(isSymbol(sym) && !isCore(sym)) {
+      if(isSystemFun(fn = lookup(scope, sym, false))) {
+        if(!find(funs, fn))
+          unroll(fn, funs, sym.description)
+      }
+      if(isBoundFun(fn = lookup(scope, sym, false))) {
+        if(!find(funs, fn))
+          unroll(fn, funs, sym.description)
+      }
     }
     else if(isBoundMac(fn))
       throw new Error('macros should be gone by unroll time:'+pretty(fn))

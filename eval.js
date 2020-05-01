@@ -3,6 +3,7 @@
 var counter = 0
 var syms = require('./symbols')
 var errors = require('./errors')
+var lookup = require('./lookup')
 var wrap   = errors.wrap
 
 var {
@@ -35,6 +36,8 @@ function map(ary, fn, scope, skip) {
 
 //inline scoped vars, but don't overwrite arguments
 //or locally defined vars
+//better would be to keep scoped vars until unroll time.
+//(at which point, make them be globals, maybe)
 var rebind = wrap(function (fn, scope) {
   scope = {__proto__: scope}
   function _rebind (ast) {
@@ -45,7 +48,7 @@ var rebind = wrap(function (fn, scope) {
       return value
     else if(isArray(ast)) {
       if(ast[0] === syms.def) {
-        scope[ast[1].description] = ast[1]
+        scope[ast[1].description] = {value: ast[1]}
         return map(ast, _rebind, null, [ast[0], ast[1]])
       }
       return map(ast, _rebind)
@@ -55,7 +58,7 @@ var rebind = wrap(function (fn, scope) {
   }
   var args = fn[2]
   for(var i = 0; i < args.length; i++)
-    scope[args[i].description] = args[i]
+    scope[args[i].description] = {value: args[i]}
 
   return meta(fn, [fn[0], fn[1], fn[2], _rebind(fn[3]), fn[4]])
 }, false)
@@ -65,35 +68,6 @@ function find (ary, iter) {
   for(var i = 0; i < ary.length; i++)
     if(isDefined(value = iter(ary[i])))
       return value
-}
-
-function lookup(scope, sym, doThrow) {
-  if(isArray(sym)) {
-    var value = scope
-    for(var i = 0; i < sym.length; i++) {
-      if(isArray(value)) {
-        value = find(value, ([k,v]) => {
-          if(k.description === sym[i].description)
-            return v
-        })
-      }
-      else if(isObject(value))
-        value = value[sym[i].description]
-      else if(doThrow !== false)
-        throw new Error('could not resolve:'+String(sym[i]))
-      else
-        return undefined
-    }
-    return value
-  }
-  if(!isSymbol(sym))
-    throw new Error('cannot lookup non-symbol:'+sym)
-  if(!isDefined(scope[sym.description])) {
-    if(doThrow !== false)
-      throw new Error('cannot resolve symbol:'+String(sym))
-    return undefined
-  }
-  return scope[sym.description]
 }
 
 var bind = wrap(_bind, false)
@@ -193,11 +167,10 @@ function _call (fn, argv, callingScope) {
   var scope = {__proto__: fn[4]}
 
   assertArgs(fn[0], fn[1], args, argv)
-
   for(var i = 0; i < args.length; i++)
-    scope[args[i].description] = argv[i]
+    scope[args[i].description] = {value: argv[i]}
   if(fn[1])
-    scope[fn[1].description] = fn
+    scope[fn[1].description] = {value: fn}
 
   if(isBoundMac(fn)) {
     var r = ev(body, scope)
@@ -205,8 +178,9 @@ function _call (fn, argv, callingScope) {
     //in it can continue calling itself
     return bind(r, scope)
   }
-  else
+  else {
     return ev(body, scope)
+  }
 }
 
 
@@ -234,7 +208,7 @@ function _ev(ast, scope) {
     }
     if(ast[0] === syms.def) {
       if(!isSymbol(ast[1])) throw new Error('attempted to define a non-symbol:'+stringify(ast))
-      return scope[ast[1].description] = ev(ast[2], scope)
+      return (scope[ast[1].description] = {value: ev(ast[2], scope)}).value
     }
     if(ast[0] === syms.set) {
       if(!isSymbol(ast[1])) throw new Error('attempted to define a non-symbol:'+stringify(ast))
@@ -242,7 +216,7 @@ function _ev(ast, scope) {
       //but you can call functions?
       if(!isDefined(scope[ast[1].description]))
         throw new Error('attempted to set unknown var')
-      return scope[ast[1].description] = ev(ast[2], scope)
+      return (scope[ast[1].description].value = ev(ast[2], scope))
     }
     if(ast[0] === syms.quote)
       return quote(ast[1], scope)
@@ -358,6 +332,7 @@ function quote (ast, scope) {
     //note; they could do (quote (def (unquote sym)))
     //to define a symbol passed in from caller.
     if(ast[0] === syms.def && isSymbol(ast[1])) {
+      //XXX
       if(!scope.__hygene) scope.__hygene = {}
       var newSym = Symbol(ast[1].description + '__' + (++counter))
       scope.__hygene[ast[1].description] = newSym
@@ -367,14 +342,17 @@ function quote (ast, scope) {
     }
     return meta(ast, ast.map(v => quote (v, scope)))
   }
-  else if(isSymbol(ast) && scope.__hygene)
+  else if(isSymbol(ast) && scope.__hygene) {
     return scope.__hygene[ast.description] || ast
+  }
   return ast
 }
 exports = module.exports = ev
 exports.call = function (fun, args) {
   return call(fun, args)
 }
-exports.eval = ev
+exports.eval = function (ast, scope) {
+  return ev(ast, scope)
+}
 exports.quote = quote
 exports.bind = bind

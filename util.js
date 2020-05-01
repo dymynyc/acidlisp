@@ -80,6 +80,10 @@ function isBound(b) {
   )
 }
 
+function isCore (c) {
+  return isSymbol(c) && c === syms[c.description]
+}
+
 function eqSymbol(sym, str) {
   return isSymbol(sym) && str === sym.description
 }
@@ -110,6 +114,7 @@ exports.isSystemFun = isSystemFun
 exports.isNumber    = isNumber
 exports.isBasic     = isBasic
 exports.isBound     = isBound
+exports.isCore      = isCore
 exports.eqSymbol    = eqSymbol
 exports.equals      = equals
 

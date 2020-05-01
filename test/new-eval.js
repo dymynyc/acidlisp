@@ -187,7 +187,6 @@ tape('what happens if a macro calls another macro?', function (t) {
   t.end()
 
 })
-
 tape('if a macro creates a var does not collide', function (t) {
 
   var scope = {
@@ -229,7 +228,7 @@ tape('if a macro creates a var does not collide', function (t) {
   console.log(stringify(_swap.slice(0, 4)))
   console.log(_swap[3][1][1], _swap[3][4][1][2])
   t.equal(_swap[3][1][1].description, _swap[3][4][1][2].description)
-  var _scope = {swapsies: _swap, __proto__: scope}
+  var _scope = {swapsies: {value:_swap}, __proto__: scope}
   var r = ev([swapsies, 0], _scope)
   delete r.meta
   t.deepEqual(r, [2,1,7])

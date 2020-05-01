@@ -12,7 +12,10 @@ var acid = require('../')
 
 //var flatten = require('../flatten')
 var env = {
-  add: function (a, b) { return a + b },
+  add: function (a, b) {
+    console.log('add',a,b)
+    return a + b
+  },
   sub: function (a, b) { return a - b },
   lt:  function (a, b) { return a < b }
 }

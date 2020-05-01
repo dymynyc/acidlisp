@@ -12,7 +12,8 @@ var wat2wasm = require('../wat2wasm')
 var acid = require('../')
 
 var env = {
-  a: 7, b: 0, d: 0, e: 0, f: 1,
+  a: {value:7}, b: {value:0}, d: {value:0},
+  e: {value:0}, f: {value:1},
 //  and: (a)    => a & 1, //wtf?
   add: (a, b) => a + b,
   lt:  (a, b) => a < b,
@@ -71,8 +72,8 @@ var expected = [
   10
 ]
 
-var keys = Object.keys(env).filter(e => isNumber(env[e]))
-var values = keys.map(k => env[k])
+var keys = Object.keys(env).filter(e => isNumber(env[e].value))
+var values = keys.map(k => env[k].value)
 //return console.log(keys, values, env)
 
 

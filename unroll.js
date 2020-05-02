@@ -129,11 +129,6 @@ function assertUnbound(funs) {
 
 }
 
-function log(n) {
-  console.error(n)
-  return n
-}
-
 module.exports = function (funs) {
   if(isBoundFun(funs) || isBoundMac(funs)) {
     var fun = funs

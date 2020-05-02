@@ -100,12 +100,10 @@ function __bind (body, scope) {
     // allow if a bound mac is just returned inline
     var bm = isBoundMac(body[0]) ? body[0] : bind(body[0], scope)
     if(isBoundMac(bm)) {
-      console.log('BOUND MAC', body)
       return bind(call(bm, body.slice(1).map(e => bind(e, scope))), scope)
     }
     else {
       if(isLookup(body[0])) {
-          console.log("LOOKUP", body[0].slice(1))
           bm = lookup(scope, body[0].slice(1))
         if(!bm) throw new Error('could not resolve:'+pretty(body[0]))
       }

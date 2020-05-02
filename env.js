@@ -112,7 +112,6 @@ module.exports = function (memory, globals, exports, imports) {
       throw new Error('system module:'+module+' is not provided')
     if(!imports[module][name])
       throw new Error('system module:'+module+' does not provide function:'+ name)
-    console.log('call', module, name, args)
     return imports[module][name].apply(null, args)
   }
 

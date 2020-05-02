@@ -326,10 +326,6 @@ exports.loop = function ([test, iter, result], isBlock) {
 
 }
 
-function blockify_store(store, isBlock) {
-  
-}
-
 exports.i32_load = function ([ptr]) {
   return w('i32.load', compile(ptr))
 }

@@ -207,6 +207,16 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 2/5/2020
+
+researched type inference. also refactored complier.
+deleted flatten, and generate wat ast, then stringify.
+preparing to switch to stack form, then output binary.
+then won't need wat2wasm! then you'll only need to install js!
+
+Then I need variable args, and it will be time to start implementing
+this in itself!
+
 ### 30/4/2020
 
 via a very close reading of the spec, while attempting

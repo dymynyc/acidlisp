@@ -9,17 +9,13 @@ var {
   pretty
 } = require('../util')
 
-
-var wasmString = require('wasm-string')
-
 var syms = require('../symbols')
 
 function isSingleLine(s) {
   return !/\n/.test(s)
 }
 
-var wasmSyms = {
-}
+var wasmSyms = {}
 
 function S(string) {
   return wasmSyms[string] = wasmSyms[string] || Symbol(string)
@@ -112,10 +108,10 @@ function compile (ast, isBlock) {
   //hard coded strings will be encoded in a data section
 }
 
-exports = module.exports = function (ast, env) {
-  return pretty(exports.module(ast, env))
+exports = module.exports = function (ast, env, stringify) {
+  return (stringify || pretty) (exports.module(ast, env))
 }
-
+exports.S = S
 function assertRef (r) {
   if(isRef(r)) return r
   else if(isSymbol(r))
@@ -178,7 +174,6 @@ exports.fun = function (ast) {
   var args = ast.shift()
   var body = ast[0]
   var defs = getDefs(body) || []
-  console.error("DEFS", defs || [])
   return w('func', [name]
     .concat(args.map(e => w('param', [$(e), S('i32') ]) ))
     .concat([result_i32])
@@ -221,19 +216,21 @@ exports.if = function ([test, then, e_then], isBlock) {
 
 exports.loop = function ([test, iter, result], isBlock) {
   if(!isBlock)
-    return w('loop', [result_i32, 
-      w('if', [result_i32,
+    return w('loop', [result_i32,
+      w('if', [
         compile(test, false),
         w('then', [compile(iter, true), w('br', [1])]),
-        compile(result || 0, false)
-      ])])
+      ]),
+      compile(result || 0, false)
+    ])
   else
     return w('loop', [
       w('if', [
         compile(test, false),
-        w('then', [compile(iter, true), w('br', [1])]),
-        compile(result, true)
-      ])])
+        w('then', [compile(iter, true), w('br', [1]) ])
+      ]),
+      compile(result, true)
+      ])
 }
 
 exports.set =

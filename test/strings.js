@@ -19,7 +19,7 @@ var createEnv = require('../env')
 function envify(ary) {
   if(!isArray(ary)) return ary
   var _env = {}
-  ary.forEach(([k, v]) => _env[k.description] = v)
+  ary.forEach(([k, v]) => _env[k.description] = {value: v})
   return _env
 }
 var inputs = [

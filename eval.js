@@ -63,13 +63,6 @@ var rebind = wrap(function (fn, scope) {
   return meta(fn, [fn[0], fn[1], fn[2], _rebind(fn[3]), fn[4]])
 }, false)
 
-function find (ary, iter) {
-  var value
-  for(var i = 0; i < ary.length; i++)
-    if(isDefined(value = iter(ary[i])))
-      return value
-}
-
 var bind = wrap(_bind, false)
 
 function _bind (body, scope) {
@@ -107,10 +100,12 @@ function __bind (body, scope) {
     // allow if a bound mac is just returned inline
     var bm = isBoundMac(body[0]) ? body[0] : bind(body[0], scope)
     if(isBoundMac(bm)) {
+      console.log('BOUND MAC', body)
       return bind(call(bm, body.slice(1).map(e => bind(e, scope))), scope)
     }
     else {
       if(isLookup(body[0])) {
+          console.log("LOOKUP", body[0].slice(1))
           bm = lookup(scope, body[0].slice(1))
         if(!bm) throw new Error('could not resolve:'+pretty(body[0]))
       }
@@ -272,7 +267,7 @@ function _ev(ast, scope) {
             ary[2][0] === syms.system) {
             //make the pattern look like a bound function
             var sc = scope[ary[1].description] =
-              [system_fun, null, ary[2][3], [ary[2][1], ary[2][2]], scope]
+              {value: [system_fun, null, ary[2][3], [ary[2][1], ary[2][2]], scope]}
             sc.meta = ary[2].meta
           }
           else if(sym === syms.export) {

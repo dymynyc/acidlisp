@@ -13,7 +13,7 @@ function toPosition(name, meta) {
 var many = [0, Infinity]
 var more = [1, Infinity]
 var lengths = {
-  loop    : 2,
+  loop    : [2, 3],
   if      : [2,3],
   def     : 2,
   block   : many,

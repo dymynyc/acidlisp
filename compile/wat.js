@@ -8,7 +8,6 @@ var {
   toRef, fromRef, isRef,
   pretty
 } = require('../util')
-var flatten = require('../flatten')
 
 var wasmString = require('wasm-string')
 
@@ -107,9 +106,12 @@ function compile (ast, isBlock) {
       return fn(ast.slice(1), isBlock)
     }
     else {
-      return w('call', [toName(fn_name)].concat(ast.slice(1).map(e => compile(e, isBlock))) )
+      return w('call', [toName(fn_name)].concat(ast.slice(1).map(e => compile(e, false))) )
     }
   }
+  //the following values can't do anything in a block position
+  else if(isBlock)
+    return ''
   else if(isNumber(ast))
     return w('i32.const', ast) //TODO other number types
   else if(isSymbol(ast))
@@ -192,7 +194,7 @@ exports.fun = function (ast) {
   ast = ast.slice(0)
   var name = isSymbol(ast[0]) ? $(ast.shift()) : ''
   var args = ast.shift()
-  var body = flatten(ast[0])
+  var body = ast[0]
   var defs = getDefs(body)
   return w('func', [name,
     args.map(e => w('param', ['$'+e.description, 'i32']))
@@ -216,17 +218,20 @@ exports.system_fun = function (ast, env) {
 
 }
 
-exports.if = function ([test, then, e_then]) {
+exports.if = function ([test, then, e_then], isBlock) {
   if(e_then)
     return w('if', [
-      compile(test),
-      w('then', compile(then, true)),
-      w('else', compile(e_then, true))
+      isBlock ? '' : w('result', 'i32'),
+      compile(test, false),
+      compile(then, isBlock),
+      compile(e_then, isBlock)
     ])
   else
     return w('if', [
-      compile(test),
-      w('then', compile(then, true))
+      isBlock ? '' : w('result', 'i32'),
+      compile(test, false),
+      compile(then, isBlock),
+      isBlock ? '' : compile(0, isBlock)
     ])
 
 }
@@ -272,17 +277,25 @@ exports.rotr  = pairOp('i32.rotr')
 
 exports.block = function (args, isBlock) {
   if(isBlock === undefined) throw new Error('isBlock is undefined')
-  return args.map((e,i) => {
+  return w('block ' + (isBlock ? '' : '(result i32)'), args.map((e,i) => {
     //TODO: implement proper globals, and remove that set_ hack
     if(i+1 < args.length) {
       if(!e) return ''
-      if(isArray(e) && !syms[e[0].description] && !/^set_/.test(e[0].description) && isExpressionTree(e)) {
+      if(
+        isArray(e) &&
+        !syms[e[0].description] &&
+        !/^set_/.test(e[0].description) &&
+        isExpressionTree(e)
+      ) {
         return w('drop', compile(e, true))
       }
-     else return compile(e, true)
+      else
+        return compile(e, true)
     }
-    return compile(e, isBlock)
-  }).join('\n')
+    //can drop lone variables, at the end of blocks,
+    //if that block does not need a value.
+    return isBlock && isSymbol(e) ? '' :compile(e, isBlock)
+  }))
 }
 
 exports.set =
@@ -290,38 +303,61 @@ exports.def = function ([sym, value], isBlock) {
   return w('local.' +(isBlock ? 'set':'tee'), [$(sym), compile(value, false)])
 }
 
-exports.loop = function ([test, iter], isBlock) {
-  //TODO: expand test incase it's got statements
-  if(isExpressionTree(test))
-    return '(loop (if\n'+
-      indent(compile(test, false)+'\n(then\n'+
-      indent(compile(iter, true))+'\n(br 1))))')
-  else {
-    if(!eqSymbol(test[0], 'block'))
-      throw new Error('expected block:'+stringify(test))
-    test = test.slice()
-    var value = test.pop()
-    return '(loop\n'+
+exports.loop = function ([test, iter, result], isBlock) {
+  if(!isBlock)
+    return '(loop (result i32) (if (result i32)\n'+
       indent(
-        compile(test, true)+'\n'+
-        '(if '+compile(value, false)+
-          '\n(then\n' +
-          indent(compile(iter, false))+ '\n(br 1)\n))'
-      ) + '\n)'
-  }
+        compile(test, false)+ ';;test \n(then\n'+
+          indent(compile(iter, false)+ ';;body\n'+
+          '(br 1))\n' +
+            compile(result || 0, false)+';;result\n'+
+          '))')
+      )
+  else
+    return '(loop (if\n'+
+      indent(
+        //note: test for an if must always return a value
+        compile(test, false)+ '\n(then\n'+
+          indent(compile(iter, true)+ '\n'+
+          '(br 1))\n' +
+          (result ? compile(result, true) : '')+
+          '))')
+      )
+
+}
+
+function blockify_store(store, isBlock) {
+  
 }
 
 exports.i32_load = function ([ptr]) {
   return w('i32.load', compile(ptr))
 }
-exports.i32_store = function ([ptr, value]) {
-  return w('i32.store', [compile(ptr), compile(value)])
+exports.i32_store = function ([ptr, value], isBlock) {
+  if(isBlock)
+    return w('i32.store', [compile(ptr, false), compile(value, false)])
+  else
+    //note! this is wrong, it could apply value twice
+    //(if it has side effects)
+    return w('block (result i32)',
+      [w('i32.store', [compile(ptr, false), compile(value, false)]),
+      compile(value, false)])
+
+
 }
 exports.i32_load8 = function ([ptr]) {
   return w('i32.load8_u', compile(ptr))
 }
-exports.i32_store8 = function ([ptr, value]) {
-  return w('i32.store8', [compile(ptr), compile(value)])
+exports.i32_store8 = function ([ptr, value], isBlock) {
+  if(isBlock)
+    return w('i32.store8', [compile(ptr), compile(value)])
+  else
+    //note! this is wrong, it could apply value twice
+    //(if it has side effects...)
+    //instead we need to add another variable to hold this then return.
+    //if value is already a variable, that's fine.
+    return w('block (result i32)',
+      [w('i32.store8', [compile(ptr), compile(value)]), compile(value)])
 }
 // just a temporary hack!
 // instead implement globals that only a module can see...

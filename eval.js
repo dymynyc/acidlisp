@@ -244,11 +244,9 @@ function _ev(ast, scope) {
     if(symbol === syms.loop) {
         var test = ast[1]
         var body = ast[2]
-        value = 0
-        while(ev(test, env)) {
-          value = ev(body, env)
-        }
-        return value
+        var result = ast[3]
+        while(ev(test, env)) ev(body, env)
+        return result ? ev(result, env) : 0 //should be nil
       }
 
     //XXX here, export is only allowed at the top level?

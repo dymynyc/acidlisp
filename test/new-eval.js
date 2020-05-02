@@ -5,7 +5,6 @@ var syms = require('../symbols')
 var parse = require('../parse')
 var {isNumber, stringify, pretty, isArray} = require('../util')
 var unroll = require('../unroll')
-var flatten = require('../flatten')
 
 var {
   isSymbol, isFun, isBasic, isFunction, isArray, stringify

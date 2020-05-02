@@ -25,7 +25,7 @@ var inputs = [
   '(add 1 2)',
   '(add 4 (add 3 (add 2 (add 1 0))))',
   '(block (def foo 17) (add foo 2))',
-  '{block (def i 0) (def sum 0) (loop [lt i 10] [def sum {add sum (def i [add i 1])}])}',
+  '{block (def i 0) (def sum 0) (loop [lt i 10] [def sum {add sum (def i [add i 1])}] sum)}',
 ]
 
 var outputs = [

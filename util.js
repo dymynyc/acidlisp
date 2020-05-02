@@ -154,10 +154,10 @@ function indent(s) {
     return (''+s).split('\n').map(line => '  ' + line).join('\n')
 }
 
-function stringify_list (l) {
+function stringify_list (l, inject) {
   var s = '('
   for(var i = 0; i < l.length; i++) {
-    var item = pretty(l[i]) || 'undefined'
+    var item = pretty(l[i], inject)
     if(s.length + item.length < 40)
       s += item + ' '
     else
@@ -176,11 +176,17 @@ function stringify (s) {
   return JSON.stringify(s)
 }
 
-function pretty (s) {
- if(isBuffer(s)) return wasmString.encode(s)
-  if(isArray(s)) return stringify_list(s)
+function pretty (s, inject) {
+  if(inject) {
+    var v = inject(s)
+    if(v) return v
+  }
+  if(isBuffer(s)) return wasmString.encode(s)
+  if(isArray(s)) return stringify_list(s, inject)
   if(isSymbol(s)) return s.description
   if(isFunction(s)) return indent(stringify(s.source))
+  if(s === null) return ''
+  if(s === undefined) return 'undefined'
   if(isObject(s)) {
     var s = '{\n'
       for(var k in s)

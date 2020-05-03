@@ -14,6 +14,14 @@ function getValue(value) {
   return isFunction(value) ? value : value.value
 }
 
+function toName(sym) {
+  return (
+    isSymbol(sym) ? sym.description
+  : isArray(sym) ? sym.map(toName).join('.')
+  : '' + sym
+  )
+}
+
 module.exports = function lookup(scope, sym, doThrow) {
   var value
   if(isArray(sym)) {
@@ -25,11 +33,11 @@ module.exports = function lookup(scope, sym, doThrow) {
             return v //XXX
         })
       }
-      else if(isObject(value)) {
+      else if(isObject(value) && isObject(value[sym[i].description])) {
         value = getValue(value[sym[i].description]) // XXX .value
       }
       else if(doThrow !== false)
-        throw new Error('could not resolve:'+String(sym[i]))
+        throw new Error('could not resolve:'+toName(sym))
       else
         return undefined
     }

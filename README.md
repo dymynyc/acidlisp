@@ -207,6 +207,33 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 3/5/2020
+
+I considered variable args, but it was too daunting.
+Instead I implemented a hashtable, which I need to parse
+symbols (because I want two identical symbols to have the
+same address) Got it working, and for the first time,
+wrote the tests in acid too.
+There is definitely a problem with macros, but it only
+seems to happen when exporting them.
+I had a macro that I both exported and used inside
+of acid-hashtable, but the inside one couldn't call
+a function also in that package. It was compiled with
+the wrong name. I havn't used macros as much as I thought I
+would, and they still have some weird bugs.
+
+Also, I had some ideas about type checking. I think for a
+forwards-only type checker (not type inference, your exports must be typed)
+then implementing a type checker is as easy as implementing
+an interpreter. Types are just Values. Take the interpreter
+and execute it on the same ast, but redefined the operators
+to operate on types so `x + y = z` becomes `int + int = int`
+
+I am now wondering if I can use a approach like this to do thing
+like ensure that function X is always called before Y, or
+that something eventually happens.
+
+
 ### 2/5/2020
 
 researched type inference. also refactored complier.

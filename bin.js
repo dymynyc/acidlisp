@@ -29,9 +29,9 @@ function call (m, fn, args) {
 
 
 if(!module.parent) {
-//  var opts = require('minimist')(process.argv.slice(2))
+  var opts = require('minimist')(process.argv.slice(2))
   //console.error(opts)
-  var argv = process.argv.slice(2)
+  var argv = opts._
   var cmd = argv.shift()
   var file = argv.shift()
 
@@ -48,8 +48,12 @@ if(!module.parent) {
     console.log(pretty(unroll(load(file))))
   else if(cmd === 'js')
     console.log(acid.js(load(file)), env)
-  else if(cmd === 'wat')
-    console.log(acid.wat(load(file), env))
+  else if(cmd === 'wat') {
+    if(opts.fold || opts.sexp)
+      console.log(acid.wat(load(file), env))
+    else
+      console.log(acid.watStack(load(file), env))
+  }
   else if(cmd === 'run') {
     var m = Wasm(fs.readFileSync(file))
     var fn_name = argv[0]

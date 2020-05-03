@@ -1,7 +1,8 @@
 var parse      = require('./parse')
 var ev         = require('./eval')
 var unroll     = require('./unroll')
-var wat        = require('./compile/wat')
+var Wat        = require('./compile/wat')
+var WatStack   = require('./compile/wat-stack')
 var wat2wasm   = require('./wat2wasm')
 var js         = require('./compile/js')
 var hydrate    = require('./hydrate')
@@ -38,10 +39,14 @@ exports.js = function (src, env, filename) {
 
 exports.wat = function (src, env, filename) {
   env = env || createEnv()
-  return wat(unroll(evalIf(src, env, filename)), env)
+  return Wat(unroll(evalIf(src, env, filename)), env)
+}
+exports.watStack = function (src, env, filename) {
+  env = env || createEnv()
+  return WatStack(unroll(evalIf(src, env, filename)), env)
 }
 
 exports.wasm = function (src, env, filename, imports) {
   env = env || createEnv()
-  return wat2wasm(exports.wat(src, env, filename), imports)
+  return wat2wasm(exports.watStack(src, env, filename), imports)
 }

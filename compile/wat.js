@@ -197,7 +197,7 @@ exports.system_fun = function (ast, env) {
 }
 
 exports.block = function (args, isBlock) {
-  if(isBlock === undefined) throw new Error('isBlock is undefined')
+  isBlock = isBlock === true
   return w('block',
     [isBlock ? null : result_i32]
     .concat(args.map((e,i) => {

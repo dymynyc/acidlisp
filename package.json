@@ -18,7 +18,7 @@
   },
   "scripts": {
     "test": "tape test/*.*",
-    "ecosystem": "tape test/*.* node_modules/acid-*/test/*.*"
+    "ecosystem": "tape test/*.js node_modules/acid-*/test/*.js"
   },
   "bin": "./bin.js",
   "author": "@EMovhfIrFk4NihAKnRNhrfRaqIhBv1Wj8pTxJNgvCCY=.ed25519",

@@ -1,9 +1,10 @@
-//keep a counter when making hygene symbols,
+//keep a counter when making hygenic symbols,
 //so that they are always guaranted unique.
 var counter = 0
-var syms = require('./symbols')
-var errors = require('./errors')
-var lookup = require('./lookup')
+
+var syms      = require('./symbols')
+var errors    = require('./errors')
+var lookup    = require('./lookup')
 var wrap   = errors.wrap
 
 var {
@@ -13,15 +14,13 @@ var {
 }  = require('./internal')
 
 var {
-  isSymbol, isFun, isBasic, isFunction, isArray, isObject, isNumber,
-  isMac, isDefined, parseFun,pretty, isBoundFun, isBoundMac, isSystemFun,
-  stringify, meta, dump
+  isSymbol, isFun, isBasic, isFunction, isArray,
+  isObject, isNumber, isCore, isMac, isDefined,
+  isBoundFun, isBoundMac, isSystemFun,
+  parseFun, pretty, stringify, meta, dump
 } = require('./util')
 
-function isCore (c) {
-  return isSymbol(c) && syms[c.description] === c
-}
-
+//copies an ast branch with some replacements, in a scope
 function map(ary, fn, scope, skip) {
   var r = []
   skip = skip || []
@@ -38,8 +37,17 @@ function map(ary, fn, scope, skip) {
 //or locally defined vars
 //better would be to keep scoped vars until unroll time.
 //(at which point, make them be globals, maybe)
+
+//just realized a macro problem. macro's return symbols,
+//not references. so a macro can't refer to things it's scope
+//unless that symbol is also in the scope that calls it.
+//that makes macros not feel like functions. I'd need a way
+//for the macro output to extend the scope...
+
+//can I remove this?
+
 var rebind = wrap(function (fn, scope) {
-  scope = {__proto__: scope}
+  scope = createScope(fn, k => k, scope)
   function _rebind (ast) {
     if(
       isSymbol(ast) && !isCore(ast) &&
@@ -56,27 +64,24 @@ var rebind = wrap(function (fn, scope) {
     else
       return ast
   }
-  var args = fn[2]
-  for(var i = 0; i < args.length; i++)
-    scope[args[i].description] = {value: args[i]}
 
   return meta(fn, [fn[0], fn[1], fn[2], _rebind(fn[3]), fn[4]])
 }, false)
 
-var bind = wrap(_bind, false)
-
-function _bind (body, scope) {
-  var r = __bind(body, scope)
-  if(isArray(r)) r.meta = body.meta
-  return r
-}
 
 function isLookup(value) {
-  return (isArray(value) && value[0] === syms.get)
+  return isArray(value) && value[0] === syms.get
 }
 
+function copyMeta(fn) {
+  return function (a, b) {
+    var r = fn(a, b)
+    if(b.meta && isArray(r)) r.meta = b.meta
+    return r
+  }
+}
 
-function __bind (body, scope) {
+var bind = wrap(copyMeta(function __bind (body, scope) {
   var value
   if(Array.isArray(body)) {
     errors.checkArity(body)
@@ -94,28 +99,30 @@ function __bind (body, scope) {
       return body
 
     if(isSymbol(body[0]) && !syms[body[0].description] && isBoundMac(value = lookup(scope, body[0], false))) {
-      return bind(call(value, body.slice(1).map(e => bind(e, scope)), scope), scope)
+      return bind(call(
+        value, body.slice(1).map(e => bind(e, scope)), scope
+      ), scope)
     }
 
     // allow if a bound mac is just returned inline
     var bm = isBoundMac(body[0]) ? body[0] : bind(body[0], scope)
     if(isBoundMac(bm)) {
-      return bind(call(bm, body.slice(1).map(e => bind(e, scope))), scope)
+      return bind(call(
+        bm, body.slice(1).map(e => bind(e, scope))
+      ), scope)
     }
     else {
       if(isLookup(body[0])) {
           bm = lookup(scope, body[0].slice(1))
         if(!bm) throw new Error('could not resolve:'+pretty(body[0]))
       }
-      var r = [bm || body[0]].concat(body.slice(1).map(b => bind(b, scope)))
-      r.meta = body.meta
-      return r
+      return [bm || body[0]].concat(body.slice(1).map(b => bind(b, scope)))
     }
   }
   else if(isSymbol(body) && isBasic(value = lookup(scope, body, false)))
     return value
   return body
-}
+}), false)
 
 function bind_fun (fun, scope) {
   var {name,args,body} = parseFun(fun)
@@ -127,59 +134,56 @@ function bind_mac (mac, scope) {
   return meta(mac, [boundm, name, args, body, scope])
 }
 
+
 function toName (sym) {
   return isSymbol(sym) ? sym.description : String(sym)
 }
 
-function assertArgs(type, name, args, argv) {
-  if(args.length != argv.length)
-    throw new Error(
-      toName(type) + ' ' +toName(name||'') +' expected '+
-        args.length + ' but got:'+argv.length + '\n' +
-      'defined as:' +stringify([type, name, args]) + '\n' + 
-      'but passed:'+ pretty(argv)
-    )
+function createScope(fn, map, _scope) {
+  var name = fn[1], args = fn[2]
+  var scope = {__proto__: _scope || {}}
+  for(var i = 0; i < args.length; i++)
+    scope[args[i].description] = {value: map(args[i], i)}
+  if(name)
+    scope[name.description] = {value: fn}
+  return scope
 }
 
-var call = wrap(_call, true)
+function assertArgs(fn, argv) {
+  var type = fn[0], name = fn[1], args = fn[2], body = fn[3]
+  if(isArray(args))
+    if(args.length != argv.length)
+      throw new Error(
+        toName(type) + ' ' +toName(name||'') +' expected '+
+          args.length + ' but got:'+argv.length + '\n' +
+        'defined as:' +stringify([type, name, args]) + '\n' + 
+        'but passed:'+ pretty(argv)
+      )
+}
 
-function _call (fn, argv, callingScope) {
+var call = wrap(function _call (fn, argv, callingScope) {
   if(isFunction(fn)) {
     return fn.apply(null, argv)
   }
-  if(!isBoundMac(fn) && !isBoundFun(fn) && !isSystemFun(fn)) throw new Error('expected bound function:' + stringify(fn))
-  var args = fn[2], body = fn[3], name = fn[1]
-  if(!isArray(args))
-    throw new Error('args was wrong:' + stringify([name, args, body]))
-  if(args.length != argv.length)
-    throw new Error('expected:'+args.length+' but called with:'+argv.length)
-  if(isSystemFun(fn)) {
+  if(!isBoundMac(fn) && !isBoundFun(fn) && !isSystemFun(fn))
+    throw new Error('expected bound function:' + stringify(fn))
+
+  assertArgs(fn, argv)
+
+  if(isSystemFun(fn))
     return fn[4].system_call(fn[3][0], fn[3][1], argv)
-  }
 
-  var scope = {__proto__: fn[4]}
+  var scope = createScope(fn, (_, i) => argv[i], fn[4])
+  var body = fn[3]
 
-  assertArgs(fn[0], fn[1], args, argv)
-  for(var i = 0; i < args.length; i++)
-    scope[args[i].description] = {value: argv[i]}
-  if(fn[1])
-    scope[fn[1].description] = {value: fn}
-
-  if(isBoundMac(fn)) {
-    var r = ev(body, scope)
-    //aha! because r is evaluated in the same scope it was called
-    //in it can continue calling itself
-    return bind(r, scope)
-  }
-  else {
-    return ev(body, scope)
-  }
-}
+  //aha! because r is evaluated in the same scope it was called
+  //in it can continue calling itself
+  if(isBoundMac(fn)) return bind(ev(body, scope), scope)
+  else               return ev(body, scope)
+}, true)
 
 
-var ev = wrap(_ev, false)
-
-function _ev(ast, scope) {
+var ev = wrap(function (ast, scope) {
   var value, env = scope
   //if we encounter a inline function, bind that are in scope.
 
@@ -295,7 +299,10 @@ function _ev(ast, scope) {
       bf = ev(ast[0], scope)
     }
     if(isBoundMac(bf)) //XXX
-      return ev(bind(call(bf, ast.slice(1).map(e => bind(e, scope)), scope), scope), scope)
+      return ev(bind(call(
+        bf, ast.slice(1).map(e => bind(e, scope)), scope),
+        scope //XXX not used? (will remove after I know code is running otherwise)
+      ), scope)
 
     if(isBoundFun(bf) || isFunction(bf) || isSystemFun(bf)) {
       try {
@@ -310,7 +317,7 @@ function _ev(ast, scope) {
   else if(isBasic(ast))  return ast
   else if(isSymbol(ast)) return lookup(scope, ast)
   else throw new Error('not supported yet:'+stringify(ast))
-}
+})
 
 function quote (ast, scope) {
   if(!scope) throw new Error('scope missing')
@@ -338,6 +345,7 @@ function quote (ast, scope) {
   }
   return ast
 }
+
 exports = module.exports = ev
 exports.call = function (fun, args) {
   return call(fun, args)

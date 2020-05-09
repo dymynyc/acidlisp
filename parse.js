@@ -35,8 +35,10 @@ module.exports = function (src, filename) {
       if(fn) group = fn(group, start)
       //could make this faster using binary search.
       //I thought I could just remember the last
-      for(var i = 0; i < lines.length && lines[i+1] < start; i++);
-      group.meta = {start, line: i+1, column: start - lines[i] + 1, filename}
+      if(group) {
+        for(var i = 0; i < lines.length && lines[i+1] < start; i++);
+        group.meta = {start, line: i+1, column: start - lines[i] + 1, filename}
+      }
       return group
     }
   }

@@ -1,8 +1,9 @@
 var tape = require('tape')
 var {stringify} = require('../util')
 var acid = require('../')
+var wrap = require('../wrap')
 
-var env = {}
+var env = require('../env')()
 
 var inputs = [
 ` {module
@@ -27,14 +28,19 @@ var inputs = [
 var outputs = [
   [[[0],7], [[1], 8], [[7], 14] ],
   [[[0, 0],20], [[1, 2], 23] ],
-  [[[5], 8], [[6], 13], [[8], 34], [[20], 10946], [[35], 14930352] ],
+  [[[5], 8], [[6], 13], [[8], 34],
+      [[20], 10946],
+      [[21], 17711], //these go slow enough on interpreter already.
+      //[[25], 121393],
+      //[[35], 14930352]
+  ],
 ]
 
 function makeTest(name, i, compiler) {
   tape(name+', compile functions:'+inputs[i], function (t) {
 //    var env = createEnv(Buffer.alloc(65536), {0:0})
     //console.log('input', i, inputs[i])
-    var module = compiler(inputs[i])
+    var module = compiler(inputs[i], env)
     for(var j = 0; j < outputs[i].length; j ++) {
       var args = outputs[i][j][0]
       var expected = outputs[i][j][1]
@@ -47,6 +53,9 @@ function makeTest(name, i, compiler) {
   })
 }
 inputs.forEach(function (v, i) {
-  makeTest('js', i, acid.js_eval)
-  makeTest('wasm', i, acid.wasm)
+  makeTest('eval', i, function (ast, scope) {
+    return wrap(acid.eval(ast, scope), scope)
+  })
+//  makeTest('js', i, acid.js_eval)
+//  makeTest('wasm', i, acid.wasm)
 })

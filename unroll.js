@@ -1,10 +1,18 @@
 var syms = require('./symbols')
 var {
-  isArray, isSymbol, isEmpty, pretty, meta,
-  isBoundFun, isBoundMac, isSystemFun, isCore
+  isArray, isSymbol, isEmpty, isBoundFun,
+  isSystemFun, isFunction, isCore,
+  pretty, meta,
 } = require('./util')
 
 var lookup = require('./lookup')
+
+function isLookup(sym) {
+  return !isCore(sym) && (
+    isSymbol(sym) ||
+    (isArray(sym) && sym.every(isSymbol) && sym[0] === syms.get)
+  )
+}
 
 function find(obj, fn) {
   for(var k in obj)
@@ -54,20 +62,28 @@ function unroll (fun, funs, key) {
         ast[0] = Symbol(find(funs, ast[0]))
       }
     }
-    var fn
     var sym = ast[0]
-    if(isSymbol(sym) && !isCore(sym)) {
-      if(isSystemFun(fn = lookup(scope, sym, false))) {
-        if(!find(funs, fn))
-          unroll(fn, funs, sym.description)
+    if(isLookup(sym)) {
+      console.log("LOOKUP", sym, scope)
+      var fn = lookup(scope, sym, false)
+      if(isArray(sym))
+        ast[0] = Symbol(find(funs, fn))
+      if(isSystemFun(fn) || isBoundFun(fn)) {
+        if(k = find(funs, fn)) ast[0] = Symbol(k)
+        else {
+          unroll(fn, funs)
+          ast[0] = Symbol(find(funs, fn))
+        }
       }
-      if(isBoundFun(fn = lookup(scope, sym, false))) {
-        if(!find(funs, fn))
-          unroll(fn, funs, sym.description)
+      else if(isFunction(fn)) {
+        if(isArray(sym)) throw new Error('referred to a built-in via path name:'+pretty(sym))
+        //it's a built in, so ignore it. the compiler knows what to do.
+        ;
       }
+      else
+        //should never happen
+        throw new Error('lookup failed:'+pretty(sym))
     }
-    else if(isBoundMac(fn))
-      throw new Error('macros should be gone by unroll time:'+pretty(fn))
     for(var i = 1; i < ast.length; i++)
       if(isArray(ast[i])) R(ast[i])
   })(body)
@@ -107,15 +123,12 @@ function checkUnbound (fn, _scope) {
 function unbind (fun, k) {
   if(isSystemFun(fun)) return meta(fun, [fun[0], k, fun[2], fun[3]])
 
-  var sym = isBoundFun(fun) ? syms.fun : isBoundMac(fun) ? syms.mac : null
-  if(!sym) throw new Error('neither a fun or a mac!:'+pretty(fun))
-
   if(fun[1]) //named
-    return meta(fun, [sym, fun[1], fun[2], fun[3]])
+    return meta(fun, [syms.fun, fun[1], fun[2], fun[3]])
   else if(k)
     //TODO if the function is recursive, replace internal name for itself.
     //this is necessary for inline functions.
-    return meta(fun, [sym, k, fun[2], fun[3]])
+    return meta(fun, [syms.fun, k, fun[2], fun[3]])
   else
     throw new Error('function key not provided')
 }
@@ -130,7 +143,7 @@ function assertUnbound(funs) {
 }
 
 module.exports = function (funs) {
-  if(isBoundFun(funs) || isBoundMac(funs)) {
+  if(isBoundFun(funs)) {
     var fun = funs
     funs = unroll(fun, {})
     //assertUnbound(funs)

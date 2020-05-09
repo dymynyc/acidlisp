@@ -3,6 +3,8 @@ var {
   isMac, isDefined, parseFun,pretty, isBoundFun, isBoundMac, isSystemFun,
 } = require('./util')
 
+var syms = require('./symbols')
+
 function find (ary, iter) {
   var value
   for(var i = 0; i < ary.length; i++)
@@ -25,12 +27,15 @@ function toName(sym) {
 module.exports = function lookup(scope, sym, doThrow) {
   var value
   if(isArray(sym)) {
+    if(sym[0] === syms.get)
+      sym = sym.slice(1)
     value = scope
     for(var i = 0; i < sym.length; i++) {
       if(isArray(value)) {
         value = find(value, ([k,v]) => {
-          if(k.description === sym[i].description)
+          if(k.description === sym[i].description) {
             return v //XXX
+          }
         })
       }
       else if(isObject(value) && isObject(value[sym[i].description])) {

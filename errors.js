@@ -55,6 +55,20 @@ exports.checkArity = function (ast) {
 
 }
 
+
+exports.assertArgs = function (fn, argv) {
+  var type = fn[0], name = fn[1], args = fn[2], body = fn[3]
+  if(isArray(args))
+    if(args.length != argv.length)
+      throw new Error(
+        toName(type) + ' ' +toName(name||'') +' expected '+
+          args.length + ' but got:'+argv.length + '\n' +
+        'defined as:' +stringify([type, name, args]) + '\n' + 
+        'but passed:'+ pretty(argv)
+      )
+}
+
+
 var stack = []
 
 exports.wrap = function wrap (fn, trace) {

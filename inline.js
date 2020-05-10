@@ -6,6 +6,86 @@ var {
   stringify, parseFun
 } = require('./util')
 
+function getUsedVars (body) {
+  var vars = {}
+  ;(function R (b) {
+    if(isSymbol(b))
+      vars[b.description] = (vars[b.description] || 0) + 1
+    else if(isArray(b)) {
+      //definition doesn't count as a use.
+      if(b[0] === syms.def) R(b[2])
+      else                  b.forEach(R)
+    }
+  })(body)
+  return vars
+}
+
+function removeUnusedVars (body, used) {
+  if(isArray(body) &&
+    body[0] === syms.def &&
+    !~used.indexOf(body[1])) //this var isn't used.
+    //now, if it's in another expression, the value might
+    //still be used. if it's in a block it can be dropped.
+    //but clean up blocks at the next level.
+    return body[2]
+  else
+    return body.map(b => removeUnusedVars(body, used))
+}
+
+function isRecursive (fn) {
+  var {name, body} = parseFun(fn)
+  //can't be recursive if it does not refer to itself.
+  if(!isSymbol(name)) return false
+  return !(function R (s) {
+    return (
+        isSymbol(s) && s.description == name.description
+                   ? false
+      : isBasic(s) ? true
+      : isArray(s) ? s.every(R)
+      : isSymbol(s) && isCore(s) ? false
+      : (function () { throw new Error('unexpected:'+stringify(s))})()
+    )
+  })(body)
+}
+
+var assert = require('assert')
+
+function calls (ast, name) {
+  return isArray(ast) && isSymbol(ast[0]) && ast[0].description === name.description
+}
+
+function isLoopifyable (fn) {
+  var {name, args, body} = parseFun(fn)
+  return (
+    isRecursive(fn) && isSymbol(name) && isArray(body) &&
+    body[0] === syms.if && !calls(body[1], name) &&
+    (calls(body[2], name) ^ calls(body[3], name))
+  )
+}
+
+function loopify(fn) {
+  var args = fn[2]
+  var name = fn[1]
+  var body = fn[3] //should be an if
+  assert.ok(body[0] === syms.if)
+  var test = body[1]
+  var recurse = body[2]
+  var result = body[3]
+  var flip = false
+  //end and recurse might be the other way around
+  if(calls(result, name)) {
+    result = body[2]; recurse = body[3]; flip = true
+  }
+  return [syms.fun, name, args, [syms.loop,
+      flip ? [Symbol('eq'), 0, test] : test,
+      [syms.block].concat(args.map((arg, i) =>
+        [syms.set, arg, recurse[i+1]]
+      )),
+      result
+    ]]
+}
+
+
 function _inline (body, remap, fn, hygene, vars) {
   if(!isNumber(hygene)) throw new Error('hygene must be an integer')
   var R = (body) => _inline(body, remap, fn, hygene, vars)
@@ -69,6 +149,7 @@ function _inline (body, remap, fn, hygene, vars) {
       return [syms.if, _test, R(body[2]), R(body[3])]
   }
   else {
+    //function  (may be recursive!)
     var k = body[0].description
     var args = body.slice(1).map(R)
     if(args.every(isBasic) && isFunction (remap[k]))
@@ -83,13 +164,17 @@ function _inline (body, remap, fn, hygene, vars) {
 
 function reinline(body, remap, fn, hygene, vars) {
   var _body = _inline(body, remap, fn, hygene, vars)
+  if(!needsReInline(_body)) return _body
   var _vars = getUsedVars(_body)
   return _inline(_body, remap, fn, hygene, _vars)
-
 }
 
 function inline(fn, argv, scope, hygene, vars) {
   hygene = hygene || 0
+  //if(isLoopifyable(fn))
+    //return loopify(fn)
+//  console.log(stringify(fn))
+
   var {name, args, body} = parseFun(fn)
   var vars = getUsedVars(body)
   if(argv.every(v => isSymbol(v) || isBasic)) {
@@ -103,46 +188,27 @@ function isInlineable (fn, args) {
   return !isRecursive(fn) || !args.every(isSymbol)
 }
 
-function getUsedVars (body) {
-  var vars = {}
+function isEmpty (o) {
+  for(var k in o) return false
+  return true
+}
+
+//check if there are vars defined but not used.
+function needsReInline(body) {
+  var defined = {}
   ;(function R (b) {
     if(isSymbol(b))
-      vars[b.description] = (vars[b.description] || 0) + 1
+      delete defined[b.description]
     else if(isArray(b)) {
       //definition doesn't count as a use.
-      if(b[0] === syms.def) R(b[2])
-      else                  b.forEach(R)
+      if(b[0] === syms.def) {
+        defined[b[1].description] = true
+        R(b[2])
+      }
+      else b.forEach(R)
     }
   })(body)
-  return vars
+  return !isEmpty(defined)
 }
 
-function removeUnusedVars (body, used) {
-  if(isArray(body) &&
-    body[0] === syms.def &&
-    !~used.indexOf(body[1])) //this var isn't used.
-    //now, if it's in another expression, the value might
-    //still be used. if it's in a block it can be dropped.
-    //but clean up blocks at the next level.
-    return body[2]
-  else
-    return body.map(b => removeUnusedVars(body, used))
-}
-
-function isRecursive (fn) {
-  var {name, body} = parseFun(fn)
-  //can't be recursive if it does not refer to itself.
-  if(!isSymbol(name)) return false
-  return !(function R (s) {
-    return (
-        isSymbol(s) && s.description == name.description
-                   ? false
-      : isBasic(s) ? true
-      : isArray(s) ? s.every(R)
-      : isSymbol(s) && isCore(s) ? false
-      : (function () { throw new Error('unexpected:'+stringify(s))})()
-    )
-  })(body)
-}
-
-module.exports = {isRecursive, isInlineable, getUsedVars, inline}
+module.exports = {isRecursive, isInlineable, getUsedVars, inline, loopify}

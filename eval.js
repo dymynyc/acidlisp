@@ -4,8 +4,7 @@ var lookup    = require('./lookup')
 var wrap   = errors.wrap
 
 var {
-  bound_fun: boundf,
-  system_fun
+  bound_fun: boundf, system_fun
 }  = require('./internal')
 
 var {

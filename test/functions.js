@@ -28,11 +28,17 @@ var inputs = [
 var outputs = [
   [[[0],7], [[1], 8], [[7], 14] ],
   [[[0, 0],20], [[1, 2], 23] ],
-  [[[5], 8], [[6], 13], [[8], 34],
-      [[20], 10946],
-      [[21], 17711], //these go slow enough on interpreter already.
-      //[[25], 121393],
-      //[[35], 14930352]
+  //fib. these get pretty heavy.
+  //a compiler will skip the rest once
+  //these get over 100ms
+  [
+    [[5], 8],
+    [[6], 13],
+    [[8], 34],
+    [[20], 10946],
+    [[21], 17711], //these go slow enough on interpreter already.
+    [[25], 121393],
+    [[35], 14930352]
   ],
 ]
 
@@ -46,8 +52,10 @@ function makeTest(name, i, compiler) {
       var expected = outputs[i][j][1]
       var start = Date.now()
       var actual = module.apply(null, args)
-      console.log(Date.now() - start)
+      var time = Date.now() - start
+      console.log(stringify(args)+'=>'+stringify(actual)+' ('+time+'ms)')
       t.equal(actual, expected)
+      if(time > 100) break;
     }
     t.end()
   })
@@ -56,6 +64,6 @@ inputs.forEach(function (v, i) {
   makeTest('eval', i, function (ast, scope) {
     return wrap(acid.eval(ast, scope), scope)
   })
-//  makeTest('js', i, acid.js_eval)
-//  makeTest('wasm', i, acid.wasm)
+  makeTest('js', i, acid.js_eval)
+  makeTest('wasm', i, acid.wasm)
 })

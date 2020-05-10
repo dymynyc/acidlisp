@@ -207,6 +207,23 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 10/5/2020
+
+experimenting with removing macros is going well.
+inlining is exciting. it's gonna run really fast.
+I figured out a way to turn simple recursion into loops.
+I think maybe acid lisp just won't have loops, apart from
+recursion... and maybe not mutable variables either.
+because these are both tricky to inline.
+
+And functions are way more composable!
+
+I did a test in javascript, and the same simple function
+written as a loop was 20 times faster than as recursion.
+I thought JS was meant to be fast?
+If we rewrite recursion as loops, then you can write
+nice high level code but it'll be as fast as it can be.
+
 ### 3/5/2020
 
 I considered variable args, but it was too daunting.

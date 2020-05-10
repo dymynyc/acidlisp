@@ -1,6 +1,11 @@
 var {parseFun, isSymbol, isArray, isNumber, stringify} = require('./util')
 var syms = require('./symbols')
 
+var s = {}
+'Int,List,Nil,Bool,Array'
+  .split(',')
+  .map(v => s[v] = Symbol(v))
+
 function assertTypes(actual, expected, ast) {
   if(actual !== expected) {
     throw new Error(
@@ -74,3 +79,4 @@ function check(fn, types, _scope) {
 }
 
 exports = module.exports = check
+exports.types = s

@@ -3,30 +3,20 @@
   (def mem (import "acid-memory"))
 
   (def min {fun [x y] (if (lt x y) x y)})
-  (def length {mac [w] &(i32_load $w)})
+  (def length {fun [w] (i32_load w)})
 
-  (def at (mac [s i] &{i32_load8 (add 4 $s $i)}))
+  (def at (fun [s i] {i32_load8 (add 4 s i)}))
 
-  (def set_at (mac [s i v] &{i32_store8 (add 4 $s $i) $v}))
+  (def set_at (fun [s i v] {i32_store8 (add 4 s i) v}))
 
   (export at at)
   (export set_at set_at)
 
-  (def create (mac (len) &{block
-    (def s (mem.alloc (add 4 $len)))
-    (i32_store s $len)
+  (def create (fun (len) {block
+    (def s (mem.alloc (add 4 len)))
+    (i32_store s len)
     s
   }))
-
-  (def incr {mac [d] &(def $d (add $d 1))})
-
-  (def each {mac [v start end iter]
-    &(block
-      (def $v $start)
-      (loop
-        (lt $v $end)
-        [block $iter (incr $v)]
-      ) )})
 
   (export length length)
   (export equal_at {fun [a a_start b b_start len] (block
@@ -44,7 +34,7 @@
         (loop {and
             (lt i len)
             [eq (at a (add a_start i)) (at b (add b_start i))] }
-          (incr i) )
+          (set i (add 1 i)) )
         ;;if we got to the end it means they are equal
         (eq i len)
       ]
@@ -61,7 +51,7 @@
         (loop
           {and (lt i len)
                [eq (def r [sub (at a i) (at b i)]) 0]}
-          (incr i)
+          (set i (add 1 i))
         )
         (if (lt i len) r 0)
       }
@@ -76,16 +66,21 @@
       [lt i len]
       {block
         [set_at _str i {at str (add start i)}]
-        (incr i)})
+        (set i (add 1 i))})
     _str
   ]})
 
   (def copy {fun (source s_start s_end target t_start) [block
-  ;;  (def i 0)
+    (def i 0)
+    (def len (sub s_end s_start))
     ;;haha, some bounds checking and errors would be good here
-    (each i 0 s_end
-      (set_at target [add t_start i] (at source (add s_start i)))
-    )
+      (loop
+        (lt i len)
+        (block
+          (set_at target [add t_start i] (at source (add s_start i)))
+          (set i (add 1 i))
+        )
+      )
     0
   ]})
 

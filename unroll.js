@@ -1,6 +1,6 @@
 var syms = require('./symbols')
 var {
-  isArray, isSymbol, isEmpty, isBoundFun,
+  isArray, isSymbol, isEmpty, isBoundFun, isFun, parseFun,
   isSystemFun, isFunction, isCore,
   pretty, meta,
 } = require('./util')
@@ -12,6 +12,13 @@ function isLookup(sym) {
     isSymbol(sym) ||
     (isArray(sym) && sym.every(isSymbol) && sym[0] === syms.get)
   )
+}
+
+var { bound_fun }  = require('./internal')
+
+function bind_fun (fun, scope) {
+  var {name,args,body} = parseFun(fun)
+  return meta(fun, [bound_fun, name, args, body, scope])
 }
 
 function find(obj, fn) {
@@ -53,8 +60,21 @@ function unroll (fun, funs, key) {
     return funs
   }
 
-  var scope = fun[4]
+  var scope = {__proto__: fun[4]}
+  var args = fun[2]
+  for(var i = 0; i < args.length; i++) {
+    scope[args[i].description] = {value: null, hasValue: false, arg: true}
+  }
+  if(fun[1])
+    scope[fun[1].description] = {value: fun, hasValue: true, self: true}
   ;(function R (ast) {
+    if(isFun(ast[0])) {
+      //XXX note: this function cannot access vars in the immediate
+      //enclosing scope. TODO
+      ast[0] = meta(ast[0], bind_fun(ast[0], scope))
+    }
+    var sym = ast[0]
+
     if(isBoundFun(ast[0])) {
       if(k = find(funs, ast[0])) ast[0] = Symbol(k)
       else {
@@ -62,9 +82,8 @@ function unroll (fun, funs, key) {
         ast[0] = Symbol(find(funs, ast[0]))
       }
     }
-    var sym = ast[0]
+
     if(isLookup(sym)) {
-      console.log("LOOKUP", sym, scope)
       var fn = lookup(scope, sym, false)
       if(isArray(sym))
         ast[0] = Symbol(find(funs, fn))
@@ -84,8 +103,23 @@ function unroll (fun, funs, key) {
         //should never happen
         throw new Error('lookup failed:'+pretty(sym))
     }
-    for(var i = 1; i < ast.length; i++)
+    if(isSymbol(ast[0]) && ast[0] === syms.def) {
+      //keep track of local variables, but don't replace them
+      //(maybe later?)
+      scope[ast[1].description] = {value:null, hasValue: false}
+      R(ast[2])
+      return
+    }
+
+    for(var i = 1; i < ast.length; i++) {
       if(isArray(ast[i])) R(ast[i])
+      else if(isSymbol(ast[i])) {
+        var _value = lookup(scope, ast[i], false, true)
+        //XXX instead make these into global defs.
+        //let the inliner handle them.
+        if(_value.hasValue !== false) ast[i] = _value.value
+      }
+    }
   })(body)
 
   return funs

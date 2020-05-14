@@ -3,7 +3,7 @@ var acid = require('../')
 var syms = require('../symbols')
 
 var {
-  isRecursive, isInlineable, getUsedVars, inline
+  isRecursive, isInlineable, getUsedVars, inline, loopify
 } = require('../inline')
 
 var {
@@ -21,22 +21,28 @@ var args = `(1 2 3)`
 
 var add_xyz = `(fun (x y z) {add x (add y z)})`
 var scope = {
-  add: function (a, b) { return   a +  b  },
-  sub: function (a, b) { return   a -  b  },
-  lte: function (a, b) { return +(a <= b) },
-  lt : function (a, b) { return +(a <  b) },
-  mul: function (a, b) { return   a *  b  },
+  add: function (a, b) { return   a +   b  },
+  sub: function (a, b) { return   a -   b  },
+  lte: function (a, b) { return +(a <=  b) },
+  lt : function (a, b) { return +(a <   b) },
+  gt : function (a, b) { return +(a >   b) },
+  mul: function (a, b) { return   a *   b  },
+  neq: function (a, b) { return +(a !== b) },
+  eq : function (a, b) { return +(a === b) },
 }
 
 var test_if = `(fun (test t f) {if test t f})`
+
+
+
+//this recursive function could be converted into a loop.
+//actually it would be quite complicated. depends on the stack
+//to only apply an action on the way out. but it also
+//does (sub N 1) before recursing.
 var recursive = `
 (fun R (x N)
-  (if (lte N 0) x (add 1 (R x (sub N 1))))
+  (if (lte N 0) x (R (add 1 x) (sub N 1)) )
 )
-;;this recursive function could be converted into a loop.
-;;actually it would be quite complicated. depends on the stack
-;;to only apply an action on the way out. but it also
-;;does (sub N 1) before recursing.
 `
 var vars = `(fun (x y) {block
   (def z (add x y))
@@ -53,6 +59,20 @@ var loop = `(fun (N)
       (def i (add 1 i)) ))
   sum
 ))`
+
+//pipe((range 0 10) sum)
+
+var reducer = `
+(fun range (start end value) (fun (reduce) (fun R (value start)
+  (if (gte start end) value (R reduce(value start) (add 1 start)))
+)))
+`
+
+var filter = `
+(fun (test) (fun (reduce) (fun (acc item)
+  (if (test item) (reduce acc item) acc) )))
+`
+
 var tests = [
   [add_xyz, '(1 2 3)', null,  '(add 1 (add 2 3))'],
   [add_xyz, '(1 y 3)', null,  '(add 1 (add y 3))'],
@@ -61,7 +81,7 @@ var tests = [
   [add_xyz, '(x 100 200)', scope, '(add x 300)'],
   [test_if, '(1 b c)', scope, 'b'],
   [test_if, '(0 b c)', scope, 'c'],
-  [recursive, '(x 3)', scope, '(add 1 (add 1 (add 1 x)))'],
+  [recursive, '(y 3)', scope, '(add 1 (add 1 (add 1 y)))'],
   [recursive, '(x M)', scope],
   [vars, '(a b)', scope, '(block (def z (add a b)) (mul z z))'],
   [vars, '(1 2)', scope, '9'],
@@ -89,29 +109,22 @@ tests.forEach(function (v, i) {
     t.equal(isInlineable(fn, argv), !!output)
     if(isInlineable(fn, argv))
       var ast = inline(fn, argv, scope)
-
-    /*
-    try {
-    } catch (err) {
-      console.log(err)
-      //it should be possible to come up with a way
-      //to detect if a recursive function will inlinable.
-      //hmm.
-      //if it doesn't have any known args, it won't be.
-      //if it doesn't have a path that doesn't have recursion
-      //then it won't be (in fact, it will stackoverflow)
-      //
-      if(isRecursive(acid.parse(src)) && !output) t.ok(true)
-      else {
-        console.error('failed to inline:'+src)
-        throw err
-      }
-    }*/
-
+//    else
+//      var ast = loopify(fn)
     console.log('time', Date.now()- start)
     console.log(output)
     if(output)
       t.equal(stringify(ast), output)
+    else
+      t.notOk(stringify(ast))
     t.end()
   })
+})
+
+tape('loopify', function (t) {
+  var recurse = '(fun R (sum N) (if (gt N 0) (R (add N sum) (sub N 1)) sum))'
+  var ast = acid.parse(recurse)
+  var loopy = loopify(ast)
+  console.error(stringify(loopy))
+  t.end()
 })

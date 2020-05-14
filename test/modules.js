@@ -58,15 +58,14 @@ tape('actually import stuff', function (t) {
   var _import = createImport(path.join(__dirname, 'examples'), env)
 
   var raw = _import('./')
-  console.log(raw)
+  console.log('raw', raw)
   function testWrapped(s, name) {
-    console.log(name)
     t.equal(s.foofoo(), 27)
     t.equal(s.barbar(3), 16)
     t.equal(s.barbaz(3, 5), 15)
   }
   var s = wrap(raw, env)
-//  testWrapped(s, 'interpreter')
+  testWrapped(s, 'interpreter')
 //  testWrapped(acid.js_eval(raw), 'javascript')
   testWrapped(acid.wasm(raw), 'webassembly')
 

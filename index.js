@@ -27,7 +27,12 @@ function evalIf(src, env, filename) {
   env = envify(env || createEnv())
   return isString(src) ? ev(hydrate(parse(src, filename), env), env) : src
 }
-exports.eval = evalIf
+
+//always eval.
+exports.eval = function (src, env, filename) {
+  env = envify(env || createEnv())
+  return isString(src) ? ev(hydrate(parse(src, filename), env), env) : ev(src, env)
+}
 
 exports.js_eval = function (src, env, filename) {
   return eval(exports.js(src, env, filename))

@@ -6,6 +6,8 @@ var {
   stringify, parseFun
 } = require('./util')
 
+var lookup = require('./lookup')
+
 function getUsedVars (body) {
   var vars = {}
   ;(function R (b) {
@@ -63,7 +65,7 @@ function isLoopifyable (fn) {
   )
 }
 
-function loopify(fn) {
+function loopify(fn, scope) {
   var args = fn[2]
   var name = fn[1]
   var body = fn[3] //should be an if
@@ -93,8 +95,8 @@ function _inline (body, remap, fn, hygene, vars) {
   name = isSymbol(name) ? name.description : null
   if(isBasic(body)) return body
   else if(isSymbol(body)) {
-    var k = body.description
-    return remap.hasOwnProperty(k) ? remap[k] : body
+    var r = lookup(remap, body, false, true)
+    return r ? r.value : body
   }
   else if(body[0] === syms.block) {
     var _body = [syms.block]
@@ -131,7 +133,7 @@ function _inline (body, remap, fn, hygene, vars) {
     var k = body[1]
     var v = R(body[2]) //didn't forget to recurse into value this time!
     if(isBasic(v)) {
-      remap[k.description] = v
+      remap[k.description] = {value: v}
       //if this variable gets used again, keep the def
       //maybe this will removed in a second pass though.
       if((vars[k.description] | 0) <= 1) return v
@@ -171,16 +173,18 @@ function reinline(body, remap, fn, hygene, vars) {
 
 function inline(fn, argv, scope, hygene, vars) {
   hygene = hygene || 0
-  //if(isLoopifyable(fn))
-    //return loopify(fn)
-//  console.log(stringify(fn))
+//  if(isLoopifyable(fn))
+//    return loopify(fn, scope)
 
   var {name, args, body} = parseFun(fn)
   var vars = getUsedVars(body)
+  //leaves a function as a call if any args are expressions.
+  //but what if that expression is evalable? we should start
+  //by inlining it to the maximum extent.
   if(argv.every(v => isSymbol(v) || isBasic)) {
     var remap = {__proto__: scope || {}}
     for(var i = 0; i < args.length; i++)
-      remap[args[i].description] = argv[i]
+      remap[args[i].description] = {value: argv[i]}
     return reinline(body, remap, fn, ++hygene, vars)
   }
 }
@@ -188,11 +192,18 @@ function isInlineable (fn, args) {
   return !isRecursive(fn) || !args.every(isSymbol)
 }
 
+//something is evalable (that is, completely inlineable)
+//if all it's arguments are known values.
+function isEvalable (body, scope) {
+  if(isSymbol(body)) return lookup(scope, body, false, true)
+}
+
 function isEmpty (o) {
   for(var k in o) return false
   return true
 }
 
+//hope i can delete this.
 //check if there are vars defined but not used.
 function needsReInline(body) {
   var defined = {}

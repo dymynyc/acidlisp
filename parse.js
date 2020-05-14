@@ -4,9 +4,13 @@ var {
   RECURSE,GROUP,TEXT,EMPTY,EXPECT,EOF
 }  = require('stack-expression')
 
+var warn = false
+
 module.exports = function (src, filename) {
-  if(!filename)
+  if(!filename && !warn) {
+    warn = true
     console.error('pass filename to enable informative stacktraces')
+  }
   var lines = [0]
   var chars = 0
   for(var i = 0; i < src.length; i++) {

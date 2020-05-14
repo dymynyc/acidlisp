@@ -207,6 +207,19 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 14/5/2020
+
+looked at inlining again. I think it's a really good idea.
+much better than macros, but also the code I have for it
+currently isn't very complete. cases like:
+* what if arguments to a function are expressions?
+* detect if a recursive function is evalable or inlinable?
+  (evalable meaning it can be substituted for it's value, inlinable
+  meaning it's body can be copied into the current scope, body
+  with prehaps some evaling)
+* there are some things that we want always to be inlined,
+  such as loops on list literals.
+
 ### 10/5/2020
 
 experimenting with removing macros is going well.

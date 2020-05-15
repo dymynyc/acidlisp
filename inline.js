@@ -2,11 +2,23 @@ var syms = require('./symbols')
 
 var {
   isSymbol, isBasic, isDefined, isFunction, isArray, isCore,
-  isNumber,
+  isNumber, isFun,
   stringify, parseFun
 } = require('./util')
 
 var lookup = require('./lookup')
+
+//copied from eval (might move it to lookup.js)
+function createScope(fn, map, _scope) {
+  var {name, args, body} = parseFun(fn)
+  var scope = {__proto__: _scope || {}}
+  map = map || (v => v)
+  for(var i = 0; i < args.length; i++)
+    scope[args[i].description] = {value: map(args[i], i)}
+  if(name)
+    scope[name.description] = {value: fn}
+  return scope
+}
 
 function getUsedVars (body) {
   var vars = {}
@@ -65,28 +77,53 @@ function isLoopifyable (fn) {
   )
 }
 
-function loopify(fn, scope) {
-  var args = fn[2]
-  var name = fn[1]
-  var body = fn[3] //should be an if
-  assert.ok(body[0] === syms.if)
-  var test = body[1]
-  var recurse = body[2]
-  var result = body[3]
-  var flip = false
-  //end and recurse might be the other way around
-  if(calls(result, name)) {
-    result = body[2]; recurse = body[3]; flip = true
-  }
-  return [syms.fun, name, args, [syms.loop,
-      flip ? [Symbol('eq'), 0, test] : test,
-      [syms.block].concat(args.map((arg, i) =>
-        [syms.set, arg, recurse[i+1]]
-      )),
+function _loopify(args, argv, test, result, recurse) {
+  return [syms.block].concat(
+    args.map((s, i) => [syms.def, s, argv[i]])
+  ).concat([
+    [syms.loop, test,
+      [syms.block].concat(
+        args.map((arg, i) => [syms.set, arg, recurse[i+1]])
+      ),
       result
-    ]]
+    ]
+  ])
 }
 
+function loopify(fn, argv, scope) {
+  var hygene = 1, vars = {}
+  var {name, args, body} = parseFun(fn)
+
+  var [_if, test, result, recurse] = body
+  assert.ok(_if === syms.if)
+
+  scope = createScope(fn, (k, i) => argv[i], scope)
+  var r = _inline(test, scope, fn, hygene, vars)
+  //if test can be evaled, we can flatten the loop.
+  if(isBasic(r)) return inline(fn, argv, scope)
+
+  //end and recurse might be the other way around, handle that.
+  if(calls(result, name))
+    return _loopify(args, argv, [syms.eq, 0, test], recurse, result)
+  else
+    return _loopify(args, argv,              test , result, recurse)
+}
+
+function blockify (fn, argv, scope, hygene) {
+  var {args, body} = parseFun(fn)
+  //look for args that are:
+  // used more than once (will need a def)
+  // not used (drop)
+  // if the argv is an expression
+  //   will need a def if used more than once
+  // if argv is a symbol
+  //   just replace fn's internal symbol with that one.
+  //     ...that won't work if it's mutable.
+
+  return [syms.block]
+    .concat(argv.map((v, i) => [syms.def, args[i], v]))
+    .concat([_inline(body, remap, fn, hygene, vars)])
+}
 
 function _inline (body, remap, fn, hygene, vars) {
   if(!isNumber(hygene)) throw new Error('hygene must be an integer')
@@ -153,12 +190,15 @@ function _inline (body, remap, fn, hygene, vars) {
   else {
     //function  (may be recursive!)
     var k = body[0].description
-    var args = body.slice(1).map(R)
-    if(args.every(isBasic) && isFunction (remap[k]))
-      return remap[k].apply(null, args)
-    else if(k === name) {
-      return inline(fn, args, remap, hygene)
-    }
+    var args = body.slice(1).map(R) // <--------------------------\
+    var value = lookup(remap, body[0], false)      //             |
+    //if it's a FUNCTION that's a built in function, not user     |
+    //defined. we can only inline that if all arguments are known.|
+    //note, we already attempted to inline the args just above ---/
+    if(isFunction (value) && args.every(isBasic))
+      return value.apply(null, args)
+    else if(isFun(value)) //this might be a recursive function.
+      return inline(value, args, remap, hygene)
     else
       return [body[0]].concat(args)
   }
@@ -173,29 +213,40 @@ function reinline(body, remap, fn, hygene, vars) {
 
 function inline(fn, argv, scope, hygene, vars) {
   hygene = hygene || 0
-//  if(isLoopifyable(fn))
-//    return loopify(fn, scope)
-
+  var remap = createScope(fn, (k,i)=>argv[i], scope||{})
+//  if(isLoopifyable(fn)) {
+//    var _fn = loopify(fn, scope)
+//    console.log('loopify', stringify(_fn))
+//    console.log('vars', argv)
+////    var {args, body} = parseFun(_fn)
+//  //  return _inline(body, remap, fn, hygene, vars)
+//  }
   var {name, args, body} = parseFun(fn)
   var vars = getUsedVars(body)
   //leaves a function as a call if any args are expressions.
   //but what if that expression is evalable? we should start
   //by inlining it to the maximum extent.
-  if(argv.every(v => isSymbol(v) || isBasic)) {
-    var remap = {__proto__: scope || {}}
-    for(var i = 0; i < args.length; i++)
-      remap[args[i].description] = {value: argv[i]}
-    return reinline(body, remap, fn, ++hygene, vars)
-  }
+  return reinline(body, remap, fn, ++hygene, vars)
 }
 function isInlineable (fn, args) {
   return !isRecursive(fn) || !args.every(isSymbol)
 }
 
+/*
+  (create fields...) => <Struct fields...>
+
+  (create size: i32 keyType:Type valueType: Type) =>  <HashTable keyType valueType>
+
+  (set <HashTable keyType valueType>, key: keyType)=>valueType
+*/
+
 //something is evalable (that is, completely inlineable)
 //if all it's arguments are known values.
 function isEvalable (body, scope) {
-  if(isSymbol(body)) return lookup(scope, body, false, true)
+  if(isBasic(body)) return true
+  else if(isSymbol(body)) return lookup(scope, body, false, true)
+  else if(isArray(body))
+    return isFun(body[0]) && body.slice(1).every(isEvalable)
 }
 
 function isEmpty (o) {
@@ -222,4 +273,4 @@ function needsReInline(body) {
   return !isEmpty(defined)
 }
 
-module.exports = {isRecursive, isInlineable, getUsedVars, inline, loopify}
+module.exports = {isRecursive, isInlineable, getUsedVars, inline, loopify, loopify2, blockify}

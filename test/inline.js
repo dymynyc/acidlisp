@@ -3,7 +3,7 @@ var acid = require('../')
 var syms = require('../symbols')
 
 var {
-  isRecursive, isInlineable, getUsedVars, inline, loopify
+  isRecursive, isInlineable, getUsedVars, inline, loopify, loopify2
 } = require('../inline')
 
 var {
@@ -26,6 +26,7 @@ var scope = {
   lte: function (a, b) { return +(a <=  b) },
   lt : function (a, b) { return +(a <   b) },
   gt : function (a, b) { return +(a >   b) },
+  gte: function (a, b) { return +(a >=  b) },
   mul: function (a, b) { return   a *   b  },
   neq: function (a, b) { return +(a !== b) },
   eq : function (a, b) { return +(a === b) },
@@ -121,10 +122,65 @@ tests.forEach(function (v, i) {
   })
 })
 
-tape('loopify', function (t) {
-  var recurse = '(fun R (sum N) (if (gt N 0) (R (add N sum) (sub N 1)) sum))'
-  var ast = acid.parse(recurse)
-  var loopy = loopify(ast)
-  console.error(stringify(loopy))
+/*
+(fun fact (n) (if (eq 0 n) 1 (mul n (fact (sub n 1))))
+
+(fun range (start end initial) (fun (reduce)
+  ((fun R (acc i)
+    (if (gte i end) (reduce acc i) (R (reduce acc i) (add i 1)))
+  ) initial start)
+))
+
+((range 1 n 1) mul)
+
+(fun (n) (block
+  (def r 1)
+  (loop (gt n 0)
+    (set r (mul r n))
+    (set n (sub n 1))
+  )
+  r
+)
+*/
+
+tape('loopify inlineable', function (t) {
+  var ast = acid.parse(recursive)
+  //all values are known so we can just run the loop at compile time
+  t.equal(stringify(loopify2(ast, acid.parse('(7 10)'), scope)), '17')
+
+  //in this test, the test is evalable, so the loop can be flattened.
+  t.equal(stringify(loopify2(ast, acid.parse('(x 5)'), scope)), 
+    '(add 1 (add 1 (add 1 (add 1 (add 1 x)))))'
+  )
+  //x is mutated so must be a variable.
+  t.equal(
+    stringify(loopify2(ast, acid.parse('(7 M)'), scope)),
+    '(block (def x 7) (def N M) (loop (lte N 0) (block (set x (add 1 x)) (set N (sub N 1))) x))')
+  t.end()
+})
+
+tape('loopifyable, calling fun', function (t) {
+
+  var R = acid.parse(`(fun R (acc i)
+      (if (gte i end) (reduce acc i) (R (reduce acc i) (add i 1)))
+    )`)
+  t.equal(
+    loopify2(R, [1, 1], {reduce: scope.mul, __proto__:  scope, end: {value:10}}),
+    1*2*3*4*5*6*7*8*9*10
+  )
+
+  var reducer =acid.parse(`
+    (fun (start end initial reduce) ((fun R (acc i)
+      (if (gte i end) (reduce acc i) (R (reduce acc i) (add i 1)))
+    ) initial start))`)
+
+  t.equal(
+    loopify2(reducer,
+      acid.parse('(1 10 mul)'),
+      scope
+    ),
+    1*2*3*4*5*6*7*8*9*10
+  )
+
   t.end()
 })

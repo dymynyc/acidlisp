@@ -98,9 +98,11 @@ function loopify(fn, argv, scope) {
   assert.ok(_if === syms.if)
 
   scope = createScope(fn, (k, i) => argv[i], scope)
-  var r = _inline(test, scope, fn, hygene, vars)
+
   //if test can be evaled, we can flatten the loop.
-  if(isBasic(r)) return inline(fn, argv, scope)
+  var r = _inline(test, scope, fn, hygene, vars)
+  if(isBasic(r))
+    return _inline(r ? result : recurse, scope, fn, hygene, vars)
 
   //end and recurse might be the other way around, handle that.
   if(calls(result, name))
@@ -190,8 +192,8 @@ function _inline (body, remap, fn, hygene, vars) {
   else {
     //function  (may be recursive!)
     var k = body[0].description
+    var value = isFun(body[0]) ? body[0] : lookup(remap, body[0], false)
     var args = body.slice(1).map(R) // <--------------------------\
-    var value = lookup(remap, body[0], false)      //             |
     //if it's a FUNCTION that's a built in function, not user     |
     //defined. we can only inline that if all arguments are known.|
     //note, we already attempted to inline the args just above ---/
@@ -214,13 +216,13 @@ function reinline(body, remap, fn, hygene, vars) {
 function inline(fn, argv, scope, hygene, vars) {
   hygene = hygene || 0
   var remap = createScope(fn, (k,i)=>argv[i], scope||{})
-//  if(isLoopifyable(fn)) {
-//    var _fn = loopify(fn, scope)
+  if(isLoopifyable(fn)) {
+    return loopify(fn, argv, scope)
 //    console.log('loopify', stringify(_fn))
 //    console.log('vars', argv)
-////    var {args, body} = parseFun(_fn)
-//  //  return _inline(body, remap, fn, hygene, vars)
-//  }
+//    var {args, body} = parseFun(_fn)
+  //  return _inline(body, remap, fn, hygene, vars)
+  }
   var {name, args, body} = parseFun(fn)
   var vars = getUsedVars(body)
   //leaves a function as a call if any args are expressions.
@@ -273,4 +275,4 @@ function needsReInline(body) {
   return !isEmpty(defined)
 }
 
-module.exports = {isRecursive, isInlineable, getUsedVars, inline, loopify, loopify2, blockify}
+module.exports = {isRecursive, isInlineable, getUsedVars, inline, loopify, blockify}

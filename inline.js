@@ -1,7 +1,7 @@
 var assert = require('assert')
 var syms = require('./symbols')
 var lookup = require('./lookup')
-
+var internal = require('./internal')
 var {
   isSymbol, isBasic, isDefined, isFunction, isArray, isLookup,
   isCore, isNumber, isFun: _isFun, isBoundFun, isSystemFun, stringify, parseFun
@@ -193,13 +193,16 @@ function inline_expr (body, remap, fn, hygene, vars) {
     //function  (may be recursive!)
     if(body.length === 0) throw new Error('body cannot be empty list')
     var value = isFun(body[0]) ? body[0] : lookup(remap, body[0], false)
-    var args = body.slice(1).map(R) // <--------------------------\
+    var args = body.slice(1).map(R) // <--------------------------,
     //if it's a FUNCTION that's a built in function, not user     |
     //defined. we can only inline that if all arguments are known.|
-    //note, we already attempted to inline the args just above ---/
+    //note, we already attempted to inline the args just above ---`
     if(isFunction (value) && args.every(isBasic))
       return value.apply(null, args)
-    else if(isFun(value) || isBoundFun(value)) //this might be a recursive function.
+    //if a function is recursive, but called with known values
+    //then it can be inlined. or if it's not recursive.
+    else if(isFun(value) && (
+        args.every(isBasic) || !isRecursive(value)))
       return inline(value, args, remap, hygene)
     else
       return [body[0]].concat(args)
@@ -225,10 +228,8 @@ function inline (fn, argv, scope, hygene) {
 function inline_fun (fn) {
   var {name, args, body, scope} = parseFun(fn)
   if(isSystemFun(fn)) return fn
-  if(isLoopifyable(fn)) {
-    return loopify_fun(fn, scope)
-  }
-  return [syms.fun, name, args, reinline(body, scope || {}, fn, 1), scope]
+  if(isLoopifyable(fn)) return loopify_fun(fn, scope)
+  return [internal.bound_fun, name, args, reinline(body, scope || {}, fn, 1), scope]
 }
 function isInlineable (fn, args) {
   return !isRecursive(fn) || !args.every(isSymbol)

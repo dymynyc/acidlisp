@@ -207,6 +207,11 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 16/5/2020
+
+nearly got inlining on exported modules, works for some tests,
+or demos, but not everything yet...
+
 ### 14/5/2020
 
 looked at inlining again. I think it's a really good idea.

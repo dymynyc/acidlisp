@@ -53,6 +53,7 @@ function unroll (fun, funs, key) {
 
   if(isSystemFun(fun)) return funs //system funs don't have a body
 
+  //handle if the function body is it self a bound function.
   var body = fun[3]
   if(isBoundFun(body)) {
     if(k = find(funs, body)) fun[3] = k

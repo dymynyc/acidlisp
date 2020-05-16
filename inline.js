@@ -21,46 +21,41 @@ function createScope(fn, map, _scope) {
   return scope
 }
 
-function getUsedVars (body) {
+function reduceVars(body, update) {
   var vars = {}
   ;(function R (b) {
     if(isSymbol(b))
-      vars[b.description] = (vars[b.description] || 0) + 1
+      update(vars, b, false) //[b.description] = (vars[b.description] || 0) + 1
     else if(isArray(b)) {
-      //definition doesn't count as a use.
-      if(b[0] === syms.def) R(b[2])
-      else                  b.forEach(R)
+      if(b[0] === syms.def) {
+        update(vars, b[0], true); R(b[2])
+      }
+      else b.forEach(R)
     }
   })(body)
   return vars
 }
 
-function removeUnusedVars (body, used) {
-  if(isArray(body) &&
-    body[0] === syms.def &&
-    !~used.indexOf(body[1])) //this var isn't used.
-    //now, if it's in another expression, the value might
-    //still be used. if it's in a block it can be dropped.
-    //but clean up blocks at the next level.
-    return body[2]
-  else
-    return body.map(b => removeUnusedVars(body, used))
+function getUsedVars (body) {
+  return reduceVars(body, (vars, k, isDef) => {
+    if(!isDef) vars[k.description] = (vars[k.description] || 0) + 1
+  })
 }
+
+//hope i can delete this.
+//check if there are vars defined but not used.
+function needsReInline(body) {
+  return !isEmpty(reduceVars(body, (vars, k, isDef) => {
+    if(isDef) vars[k.description] = true
+    else delete vars[k.description]
+  }))
+}
+
 
 function isRecursive (fn) {
   var {name, body} = parseFun(fn)
   //can't be recursive if it does not refer to itself.
-  if(!isSymbol(name)) return false
-  return !(function R (s) {
-    return (
-        isSymbol(s) && s.description == name.description
-                   ? false
-      : isBasic(s) ? true
-      : isArray(s) ? s.every(R)
-      : isSymbol(s) && isCore(s) ? false
-      : (function () { throw new Error('unexpected:'+stringify(s))})()
-    )
-  })(body)
+  return name ? !!getUsedVars(body)[name.description] : false
 }
 
 function calls (ast, name) {
@@ -112,15 +107,6 @@ function loopify(fn, argv, scope) {
 
 function blockify (fn, argv, scope, hygene) {
   var {args, body} = parseFun(fn)
-  //look for args that are:
-  // used more than once (will need a def)
-  // not used (drop)
-  // if the argv is an expression
-  //   will need a def if used more than once
-  // if argv is a symbol
-  //   just replace fn's internal symbol with that one.
-  //     ...that won't work if it's mutable.
-
   return [syms.block]
     .concat(argv.map((v, i) => [syms.def, args[i], v]))
     .concat([_inline(body, remap, fn, hygene, vars)])
@@ -206,66 +192,28 @@ function _inline (body, remap, fn, hygene, vars) {
 }
 
 function reinline(body, remap, fn, hygene, vars) {
-  var _body = _inline(body, remap, fn, hygene, vars)
+  var _body = _inline(body, remap, fn, hygene, getUsedVars(body))
   if(!needsReInline(_body)) return _body
-  var _vars = getUsedVars(_body)
-  return _inline(_body, remap, fn, hygene, _vars)
+  return _inline(_body, remap, fn, hygene, getUsedVars(_body))
 }
 
 function inline(fn, argv, scope, hygene, vars) {
   hygene = hygene || 0
-  var remap = createScope(fn, (k,i) => argv[i], scope||{})
   if(isLoopifyable(fn)) return loopify(fn, argv, scope)
-
-  var {name, args, body} = parseFun(fn)
-  //leaves a function as a call if any args are expressions.
-  //but what if that expression is evalable? we should start
-  //by inlining it to the maximum extent.
-  return reinline(body, remap, fn, ++hygene, getUsedVars(body))
+  var {body} = parseFun(fn)
+  return reinline(
+    body,
+    createScope(fn, (k,i) => argv[i], scope||{}),
+    fn, ++hygene, getUsedVars(body)
+  )
 }
 function isInlineable (fn, args) {
   return !isRecursive(fn) || !args.every(isSymbol)
 }
 
-/*
-  (create fields...) => <Struct fields...>
-
-  (create size: i32 keyType:Type valueType: Type) =>  <HashTable keyType valueType>
-
-  (set <HashTable keyType valueType>, key: keyType)=>valueType
-*/
-
-//something is evalable (that is, completely inlineable)
-//if all it's arguments are known values.
-function isEvalable (body, scope) {
-  if(isBasic(body)) return true
-  else if(isSymbol(body)) return lookup(scope, body, false, true)
-  else if(isArray(body))
-    return isFun(body[0]) && body.slice(1).every(isEvalable)
-}
-
 function isEmpty (o) {
   for(var k in o) return false
   return true
-}
-
-//hope i can delete this.
-//check if there are vars defined but not used.
-function needsReInline(body) {
-  var defined = {}
-  ;(function R (b) {
-    if(isSymbol(b))
-      delete defined[b.description]
-    else if(isArray(b)) {
-      //definition doesn't count as a use.
-      if(b[0] === syms.def) {
-        defined[b[1].description] = true
-        R(b[2])
-      }
-      else b.forEach(R)
-    }
-  })(body)
-  return !isEmpty(defined)
 }
 
 module.exports = {isRecursive, isInlineable, getUsedVars, inline, loopify, blockify}

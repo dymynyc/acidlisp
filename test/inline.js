@@ -3,7 +3,7 @@ var acid = require('../')
 var syms = require('../symbols')
 
 var {
-  isRecursive, isInlineable, getUsedVars, inline, loopify, loopify2
+  isRecursive, isInlineable, getUsedVars, inline, loopify
 } = require('../inline')
 
 var {
@@ -146,15 +146,15 @@ tests.forEach(function (v, i) {
 tape('loopify inlineable', function (t) {
   var ast = acid.parse(recursive)
   //all values are known so we can just run the loop at compile time
-  t.equal(stringify(loopify2(ast, acid.parse('(7 10)'), scope)), '17')
+  t.equal(stringify(loopify(ast, acid.parse('(7 10)'), scope)), '17')
 
   //in this test, the test is evalable, so the loop can be flattened.
-  t.equal(stringify(loopify2(ast, acid.parse('(x 5)'), scope)), 
+  t.equal(stringify(loopify(ast, acid.parse('(x 5)'), scope)), 
     '(add 1 (add 1 (add 1 (add 1 (add 1 x)))))'
   )
   //x is mutated so must be a variable.
   t.equal(
-    stringify(loopify2(ast, acid.parse('(7 M)'), scope)),
+    stringify(loopify(ast, acid.parse('(7 M)'), scope)),
     '(block (def x 7) (def N M) (loop (lte N 0) (block (set x (add 1 x)) (set N (sub N 1))) x))')
   t.end()
 })
@@ -165,21 +165,58 @@ tape('loopifyable, calling fun', function (t) {
       (if (gte i end) (reduce acc i) (R (reduce acc i) (add i 1)))
     )`)
   t.equal(
-    loopify2(R, [1, 1], {reduce: scope.mul, __proto__:  scope, end: {value:10}}),
+    inline(R, [1, 1], {reduce: scope.mul, __proto__:  scope, end: {value:10}}),
     1*2*3*4*5*6*7*8*9*10
   )
 
-  var reducer =acid.parse(`
+  var reducer = acid.parse(`
     (fun (start end initial reduce) ((fun R (acc i)
       (if (gte i end) (reduce acc i) (R (reduce acc i) (add i 1)))
     ) initial start))`)
 
   t.equal(
-    loopify2(reducer,
-      acid.parse('(1 10 mul)'),
+    stringify(inline(reducer,
+      acid.parse('(1 10 1 (fun (a b) (mul a b)))'),
       scope
-    ),
-    1*2*3*4*5*6*7*8*9*10
+    )),
+    stringify(1*2*3*4*5*6*7*8*9*10)
+  )
+
+  t.equal(
+    stringify(inline(reducer,
+      acid.parse('(1 10 1 (fun (a b) (mul a b)))'),
+      scope
+    )),
+    stringify(1*2*3*4*5*6*7*8*9*10)
+  )
+
+  //pass the args as a literal because then we can ref mul
+  //like it would be if this code actually happened
+  t.equal(
+    stringify(inline(reducer,
+      [1, 10, 1, scope.mul],
+      scope
+    )),
+    stringify(1*2*3*4*5*6*7*8*9*10)
+  )
+
+
+  var reducer2 = acid.parse(`
+    (fun (end)
+      [(fun (start end initial reduce)
+        [(fun R (acc i)
+          (if (gte i end)
+              (reduce acc i)
+              (R (reduce acc i) (add i 1)) ))
+        initial start])
+      1 end 1 mul])`)
+
+  t.equal(
+    stringify(inline(reducer2,
+      acid.parse('(11)'),
+      scope
+    )),
+    stringify(1*2*3*4*5*6*7*8*9*10*11)
   )
 
   t.end()

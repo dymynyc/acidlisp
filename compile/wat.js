@@ -34,18 +34,19 @@ function w(name, ary) {
 var result_i32 = w('result', S('i32'))
 var param_i32 = w('param', S('i32'))
 
-function getDefs (ast, defs) {
+function getDefs (ast, defs, args) {
   defs = defs || {}
   if(isArray(ast)) {
     if(syms.def === ast[0]){// || syms.set === ast[0]) {
       defs[ast[1].description] = true
       if(isArray(ast[2])) {
-        return getDefs(ast[2], defs)
+        return getDefs(ast[2], defs, args)
       }
     }
     else
-      ast.forEach(a => getDefs(a, defs))
+      ast.forEach(a => getDefs(a, defs, args))
   }
+  args.forEach(k => delete defs[k.description])
   return Object.keys(defs).map(k => Symbol(k))
 }
 
@@ -173,7 +174,7 @@ exports.fun = function (ast) {
   var name = isSymbol(ast[0]) ? $(ast.shift()) : ''
   var args = ast.shift()
   var body = ast[0]
-  var defs = getDefs(body) || []
+  var defs = getDefs(body, {}, args) || []
   return w('func', [name]
     .concat(args.map(e => w('param', [$(e), S('i32') ]) ))
     .concat([result_i32])
@@ -288,12 +289,17 @@ exports.gt    = pairOp('i32.gt_s')
 exports.gte   = pairOp('i32.ge_s')
 exports.eq    = pairOp('i32.eq')
 exports.neq   = pairOp('i32.ne')
+exports.eqz   = uniOp('i32.eqz')
+exports.clz   = uniOp('i32.clz')
+exports.ctz   = uniOp('i32.ctz')
 exports.shl   = pairOp('i32.shl')
 exports.shr   = pairOp('i32.shr_u')
 exports.shr_s = pairOp('i32.shr_s')
 exports.xor   = pairOp('i32.xor')
 exports.rotl  = pairOp('i32.rotl')
 exports.rotr  = pairOp('i32.rotr')
+
+exports.popcnt = uniOp('i32.popcnt')
 
 exports.i32_store8  = storeOp('i32.store8')
 exports.i32_store16 = storeOp('i32.store16')

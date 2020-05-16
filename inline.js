@@ -3,11 +3,13 @@ var syms = require('./symbols')
 var lookup = require('./lookup')
 
 var {
-  isSymbol, isBasic, isDefined, isFunction, isArray, isCore,
-  isNumber, isFun,
-  stringify, parseFun
+  isSymbol, isBasic, isDefined, isFunction, isArray, isLookup,
+  isCore, isNumber, isFun: _isFun, isBoundFun, isSystemFun, stringify, parseFun
 } = require('./util')
 
+function isFun(f) {
+  return _isFun(f) || isBoundFun(f)
+}
 
 //copied from eval (might move it to lookup.js)
 function createScope(fn, map, _scope) {
@@ -43,7 +45,7 @@ function getUsedVars (body) {
 }
 
 //hope i can delete this.
-//check if there are vars defined but not used.
+//checks if there are vars defined but not used.
 function needsReInline(body) {
   return !isEmpty(reduceVars(body, (vars, k, isDef) => {
     if(isDef) vars[k.description] = true
@@ -62,6 +64,12 @@ function calls (ast, name) {
   return isArray(ast) && isSymbol(ast[0]) && ast[0].description === name.description
 }
 
+function blockify (args, argv, result) {
+  return [syms.block]
+    .concat(args.map((k, i) => [syms.def, k, argv[i]]))
+    .concat(result ? [result] : [])
+}
+
 function isLoopifyable (fn) {
   var {name, args, body} = parseFun(fn)
   return (
@@ -71,18 +79,12 @@ function isLoopifyable (fn) {
   )
 }
 
-function _loopify(args, argv, test, result, recurse) {
-  return [syms.block].concat(
-    args.map((s, i) => [syms.def, s, argv[i]])
-  ).concat([
-    [syms.loop, test,
-      [syms.block].concat(
-        args.map((arg, i) => [syms.set, arg, recurse[i+1]])
-      ),
-      result
-    ]
-  ])
+function _loopify(args, argv, test, recurse, result) {
+  return blockify(args, argv,
+    [syms.loop, test, blockify(args, recurse), result])
 }
+
+var eqz = Symbol('eqz')
 
 function loopify(fn, argv, scope) {
   var hygene = 1, vars = {}
@@ -94,27 +96,38 @@ function loopify(fn, argv, scope) {
   scope = createScope(fn, (k, i) => argv[i], scope)
 
   //if test can be evaled, we can flatten the loop.
-  var r = _inline(test, scope, fn, hygene, vars)
+  var r = inline_expr(test, scope, fn, hygene, vars)
   if(isBasic(r))
-    return _inline(r ? result : recurse, scope, fn, hygene, vars)
+    return inline_expr(r ? result : recurse, scope, fn, hygene, vars)
 
   //end and recurse might be the other way around, handle that.
   if(calls(result, name))
-    return _loopify(args, argv, [syms.eq, 0, test], recurse, result)
+    return _loopify(args, argv, test, result.slice(1), recurse)
   else
-    return _loopify(args, argv,              test , result, recurse)
+    return _loopify(args, argv, [eqz, test], recurse.slice(1), result)
 }
 
-function blockify (fn, argv, scope, hygene) {
-  var {args, body} = parseFun(fn)
-  return [syms.block]
-    .concat(argv.map((v, i) => [syms.def, args[i], v]))
-    .concat([_inline(body, remap, fn, hygene, vars)])
+function loopify_fun(fn, scope) {
+  var hygene = 1
+  var {name, args, body} = parseFun(fn)
+
+  var [_if, test, result, recurse] = body
+  assert.ok(_if === syms.if)
+
+  function _loopify (args, test, recurse, result) {
+    return [syms.fun, name, args, [syms.loop, test, blockify(args, recurse), result]]
+  }
+
+  //end and recurse might be the other way around, handle that.
+ if(calls(result, name))
+    return _loopify(args, test, result.slice(1), recurse)
+  else
+    return _loopify(args, [eqz, test], recurse.slice(1), result)
 }
 
-function _inline (body, remap, fn, hygene, vars) {
+function inline_expr (body, remap, fn, hygene, vars) {
   if(!isNumber(hygene)) throw new Error('hygene must be an integer')
-  var R = (body) => _inline(body, remap, fn, hygene, vars)
+  var R = (body) => inline_expr(body, remap, fn, hygene, vars)
   var {name} = parseFun(fn)
   name = isSymbol(name) ? name.description : null
   if(isBasic(body)) return body
@@ -151,7 +164,7 @@ function _inline (body, remap, fn, hygene, vars) {
       //if the test is not resolvable
       //then maybe there is still some partial inlining
       //of the body.
-      throw new Error('not implemented')
+      return body
   }
   else if(body[0] === syms.def) {
     var k = body[1]
@@ -171,12 +184,14 @@ function _inline (body, remap, fn, hygene, vars) {
     var _test = R(body[1])
     if(isBasic(_test))
       return R(body[(0 !== _test) ? 2 : 3])
-    else
+    else if(body.length === 4)
       return [syms.if, _test, R(body[2]), R(body[3])]
+    else
+      return [syms.if, _test, R(body[2]), 0]
   }
   else {
     //function  (may be recursive!)
-    var k = body[0].description
+    if(body.length === 0) throw new Error('body cannot be empty list')
     var value = isFun(body[0]) ? body[0] : lookup(remap, body[0], false)
     var args = body.slice(1).map(R) // <--------------------------\
     //if it's a FUNCTION that's a built in function, not user     |
@@ -184,31 +199,47 @@ function _inline (body, remap, fn, hygene, vars) {
     //note, we already attempted to inline the args just above ---/
     if(isFunction (value) && args.every(isBasic))
       return value.apply(null, args)
-    else if(isFun(value)) //this might be a recursive function.
+    else if(isFun(value) || isBoundFun(value)) //this might be a recursive function.
       return inline(value, args, remap, hygene)
     else
       return [body[0]].concat(args)
   }
 }
 
-function reinline(body, remap, fn, hygene, vars) {
-  var _body = _inline(body, remap, fn, hygene, getUsedVars(body))
+function reinline(body, remap, fn, hygene) {
+  var _body = inline_expr(body, remap, fn, hygene, getUsedVars(body))
   if(!needsReInline(_body)) return _body
-  return _inline(_body, remap, fn, hygene, getUsedVars(_body))
+  return inline_expr(_body, remap, fn, hygene, getUsedVars(_body))
 }
 
-function inline(fn, argv, scope, hygene, vars) {
+function inline (fn, argv, scope, hygene) {
   hygene = hygene || 0
   if(isLoopifyable(fn)) return loopify(fn, argv, scope)
-  var {body} = parseFun(fn)
   return reinline(
-    body,
+    parseFun(fn).body,
     createScope(fn, (k,i) => argv[i], scope||{}),
-    fn, ++hygene, getUsedVars(body)
+    fn, ++hygene
   )
+}
+
+function inline_fun (fn) {
+  var {name, args, body, scope} = parseFun(fn)
+  if(isSystemFun(fn)) return fn
+  if(isLoopifyable(fn)) {
+    return loopify_fun(fn, scope)
+  }
+  return [syms.fun, name, args, reinline(body, scope || {}, fn, 1), scope]
 }
 function isInlineable (fn, args) {
   return !isRecursive(fn) || !args.every(isSymbol)
+}
+
+function inline_module(m) {
+  if(isFun(m))
+    return inline_fun(m)
+  else {
+    return m.map(([k, fn]) => [k, inline_fun(fn)])
+  }
 }
 
 function isEmpty (o) {
@@ -216,4 +247,4 @@ function isEmpty (o) {
   return true
 }
 
-module.exports = {isRecursive, isInlineable, getUsedVars, inline, loopify, blockify}
+module.exports = {isRecursive, isInlineable, getUsedVars, inline, loopify, inline_fun, inline_module}

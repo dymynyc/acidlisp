@@ -80,7 +80,6 @@ inputs.forEach(function (v, i) {
     else
       t.equal(stringify(readBuffer(env.memory, value)), stringify(outputs[i]), 'eval, correct output')
 
-
     var m = toModule(inputs[i])
     try {
       var fn = acid.wasm(m, env)

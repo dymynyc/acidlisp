@@ -1,4 +1,6 @@
+var assert = require('assert')
 var syms = require('./symbols')
+var lookup = require('./lookup')
 
 var {
   isSymbol, isBasic, isDefined, isFunction, isArray, isCore,
@@ -6,7 +8,6 @@ var {
   stringify, parseFun
 } = require('./util')
 
-var lookup = require('./lookup')
 
 //copied from eval (might move it to lookup.js)
 function createScope(fn, map, _scope) {
@@ -61,8 +62,6 @@ function isRecursive (fn) {
     )
   })(body)
 }
-
-var assert = require('assert')
 
 function calls (ast, name) {
   return isArray(ast) && isSymbol(ast[0]) && ast[0].description === name.description
@@ -135,7 +134,7 @@ function _inline (body, remap, fn, hygene, vars) {
   if(isBasic(body)) return body
   else if(isSymbol(body)) {
     var r = lookup(remap, body, false, true)
-    return r ? r.value : body
+    return isFunction(r) ? r : r ? r.value : body
   }
   else if(body[0] === syms.block) {
     var _body = [syms.block]
@@ -215,20 +214,14 @@ function reinline(body, remap, fn, hygene, vars) {
 
 function inline(fn, argv, scope, hygene, vars) {
   hygene = hygene || 0
-  var remap = createScope(fn, (k,i)=>argv[i], scope||{})
-  if(isLoopifyable(fn)) {
-    return loopify(fn, argv, scope)
-//    console.log('loopify', stringify(_fn))
-//    console.log('vars', argv)
-//    var {args, body} = parseFun(_fn)
-  //  return _inline(body, remap, fn, hygene, vars)
-  }
+  var remap = createScope(fn, (k,i) => argv[i], scope||{})
+  if(isLoopifyable(fn)) return loopify(fn, argv, scope)
+
   var {name, args, body} = parseFun(fn)
-  var vars = getUsedVars(body)
   //leaves a function as a call if any args are expressions.
   //but what if that expression is evalable? we should start
   //by inlining it to the maximum extent.
-  return reinline(body, remap, fn, ++hygene, vars)
+  return reinline(body, remap, fn, ++hygene, getUsedVars(body))
 }
 function isInlineable (fn, args) {
   return !isRecursive(fn) || !args.every(isSymbol)

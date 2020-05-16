@@ -1,18 +1,11 @@
 var syms = require('./symbols')
 var {
   isArray, isSymbol, isEmpty, isBoundFun, isFun, parseFun,
-  isSystemFun, isFunction, isCore,
+  isSystemFun, isFunction, isCore, isLookup,
   pretty, meta,
 } = require('./util')
 
 var lookup = require('./lookup')
-
-function isLookup(sym) {
-  return !isCore(sym) && (
-    isSymbol(sym) ||
-    (isArray(sym) && sym.every(isSymbol) && sym[0] === syms.get)
-  )
-}
 
 var { bound_fun }  = require('./internal')
 
@@ -49,6 +42,7 @@ function unroll (fun, funs, key) {
     : 'fun__' + Object.keys(funs).length
     )
   }
+
   funs[getName()] = fun
 
   if(isSystemFun(fun)) return funs //system funs don't have a body
@@ -174,14 +168,12 @@ function assertUnbound(funs) {
     var v = checkUnbound(fn)
     if(v) throw new Error('found unbound variables:'+Object.keys(v).join(', ') + ' in fun:'+(fn[1]||k))
   }
-
 }
 
 module.exports = function (funs) {
   if(isBoundFun(funs)) {
     var fun = funs
     funs = unroll(fun, {})
-    //assertUnbound(funs)
     return [syms.module]
       .concat(
         Object.keys(funs).reverse()

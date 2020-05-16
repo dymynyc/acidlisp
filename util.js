@@ -41,10 +41,6 @@ function isBoundFun (ary) {
   return isArray(ary) && ary[0] === internal.bound_fun
 }
 
-function isBoundMac (ary) {
-  return isArray(ary) && ary[0] === internal.bound_mac
-}
-
 function isSystemFun(ary) {
   return isArray(ary) && ary[0] === internal.system_fun
 }
@@ -84,6 +80,13 @@ function isCore (c) {
   return isSymbol(c) && c === syms[c.description]
 }
 
+function isLookup(sym) {
+  return !isCore(sym) && (
+    isSymbol(sym) ||
+    (isArray(sym) && sym[0] === syms.get && sym.every(isSymbol))
+  )
+}
+
 function eqSymbol(sym, str) {
   return isSymbol(sym) && str === sym.description
 }
@@ -109,12 +112,12 @@ exports.isFunction  = isFunction
 exports.isFun       = isFun
 exports.isMac       = isMac
 exports.isBoundFun  = isBoundFun
-exports.isBoundMac  = isBoundMac
 exports.isSystemFun = isSystemFun
 exports.isNumber    = isNumber
 exports.isBasic     = isBasic
 exports.isBound     = isBound
 exports.isCore      = isCore
+exports.isLookup    = isLookup
 exports.eqSymbol    = eqSymbol
 exports.equals      = equals
 
@@ -125,18 +128,18 @@ exports.clone = function clone (ast) {
 }
 
 function parseFun (fun) {
-  if(fun.length < 3 || fun.length > 4) {
+  if(fun.length < 3 || fun.length > 5) {
     throw new Error('incorrect length of fun expression:'+stringify(fun))
   }
-  if(isSymbol(fun[1]))
+  if(isSymbol(fun[1]) || isBoundFun(fun))
     return {
-      fun: syms.fun === fun[0], mac: syms.mac === fun[0],
-      name: fun[1], args:fun[2], body: fun[3]
+      fun: true,
+      name: fun[1], args:fun[2], body: fun[3], scope: fun[4]
     }
   else
     return {
-      fun: syms.fun === fun[0], mac: syms.mac === fun[0],
-      name: null, args:fun[1], body: fun[2]
+      fun: true,
+      name: null, args:fun[1], body: fun[2], scope: fun[3]
     }
 }
 

@@ -1,7 +1,7 @@
 {
   "name": "acidlisp",
   "description": "a lisp for webassembly",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "homepage": "https://github.com/dymynyc/acidlisp",
   "repository": {
     "type": "git",

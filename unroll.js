@@ -82,6 +82,7 @@ function unroll (fun, funs, key) {
       var fn = lookup(scope, sym, false)
       if(isArray(sym))
         ast[0] = Symbol(find(funs, fn))
+
       if(isSystemFun(fn) || isBoundFun(fn)) {
         if(k = find(funs, fn)) ast[0] = Symbol(k)
         else {
@@ -94,9 +95,10 @@ function unroll (fun, funs, key) {
         //it's a built in, so ignore it. the compiler knows what to do.
         ;
       }
-      else
+      else {
         //should never happen
-        throw new Error('lookup failed:'+pretty(sym))
+        throw new Error('should never happen, lookup failed:'+pretty(sym))
+      }
     }
     if(isSymbol(ast[0]) && ast[0] === syms.def) {
       //keep track of local variables, but don't replace them

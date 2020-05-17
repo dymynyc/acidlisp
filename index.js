@@ -8,8 +8,10 @@ var js         = require('./compile/js')
 var hydrate    = require('./hydrate')
 var createEnv  = require('./env')
 var {
-  isString, isArray
+  isString, isArray, stringify, pretty, isFun, isBoundFun, isSymbol
 } = require('./util')
+
+var inline = require('./inline').inline_module
 
 exports.bind = function (ast, env) {
   return ev.bind(ast, envify(env))
@@ -44,11 +46,13 @@ exports.js = function (src, env, filename) {
 
 exports.wat = function (src, env, filename) {
   env = env || createEnv()
-  return Wat(unroll(evalIf(src, env, filename)), env)
+  var r = inline(evalIf(src, env, filename))
+  return Wat(unroll(r), env)
 }
 exports.watStack = function (src, env, filename) {
   env = env || createEnv()
-  return WatStack(unroll(evalIf(src, env, filename)), env)
+  var r = inline(evalIf(src, env, filename))
+  return WatStack(unroll(r), env)
 }
 
 exports.wasm = function (src, env, filename, imports) {

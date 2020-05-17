@@ -207,6 +207,12 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+## 17/5/2020
+
+okay I got inlining actually working, including loops
+but I need to inline with hygene and there is already
+too much code.
+
 ### 16/5/2020
 
 nearly got inlining on exported modules, works for some tests,

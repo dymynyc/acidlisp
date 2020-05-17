@@ -4,8 +4,12 @@ var {
   stringify, meta, dump
 } = require('./util')
 
+function toName(name) {
+  return name = isSymbol(name) ? name.description : stringify(name)
+}
+
 function toPosition(name, meta) {
-  name = isSymbol(name) ? name.description : stringify(name)
+  name = toName(name)
   return !meta ? '' :
     '    at ' +name+' ('+meta.filename+':'+meta.line+':'+meta.column+')'
 }

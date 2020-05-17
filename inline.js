@@ -90,12 +90,9 @@ function loopify(fn, argv, scope) {
     return create_loop(args, argv, _inline([eqz, test]), recurse.slice(1).map(_inline), _inline(result))
 }
 
-function inline_expr (body, remap, fn, hygene) {
-  if(!isNumber(hygene)) throw new Error('hygene must be an integer')
+function inline_expr (body, remap) {
   if(!isDefined(body))  throw new Error('cannot inline undefined!')
-  var R = (body) => inline_expr(body, remap, fn, hygene)
-  var {name} = parseFun(fn)
-  name = isSymbol(name) ? name.description : null
+  var R = (body) => inline_expr(body, remap)
   if(isBasic(body)) return body
   else if(isSymbol(body)) {
     var r = lookup(remap, body, false, true)
@@ -155,7 +152,7 @@ function inline_expr (body, remap, fn, hygene) {
         isLoopifyable(value) ||
         !isRecursive(value)
       )) {
-      return inline(value, args, remap, hygene)
+      return inline(value, args, remap)
     }
     else
       return [body[0]].concat(args)

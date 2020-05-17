@@ -32,20 +32,25 @@
         (sub (length a) a_start)
         (sub (length b) b_start) ))
       0
-      (range 0 len 1
-        (fun (acc i) (and acc (eq
-              (at a (add a_start i))
-              (at b (add b_start i)) ))) )
+      ;;returns 1 or 0
+      ((fun R (i)
+        (if (and (lt i len)
+              [eq (at a (add a_start i)) (at b (add b_start i))])
+              (R (add 1 i))
+          (eq i len)) ;;return true if we made it to end
+      ) 0)
     )})
 
   ;; compare each character up to length of shortest input
   ;; else the long one is greater
-  (export compare {fun [a b]
-    (or
-      (range 0 {min (length a) (length b)} 0
-        (fun (acc i) [or acc (sub (at a i) (at b i))]
-      ))
-      (sub (length a) (length b))
+  (export compare {fun [a b] (block
+    (def len {min (length a) (length b)})
+      ;;returns 0 or 1 or -1
+      ((fun R (acc i)
+        (if (and (lt i len) (eq 0 acc))
+          (R (sub (at a i) (at b i)) (add 1 i))
+          acc) ;;return true if we made it to end
+      ) 0 0)
     )
   })
 

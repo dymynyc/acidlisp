@@ -174,7 +174,6 @@ function inline_expr (body, remap, fn, hygene, vars) {
   else if(body[0] === syms.def) {
     var k = body[1]
     var v = R(body[2]) //didn't forget to recurse into value this time!
-    //console.log("INLINE_def", k, v, remap)
 
     //okay problem is we are inlining a function that can see
     //another function in it's closure that we can't see.
@@ -207,6 +206,11 @@ function inline_expr (body, remap, fn, hygene, vars) {
     //if it's a FUNCTION that's a built in function, not user     |
     //defined. we can only inline that if all arguments are known.|
     //note, we already attempted to inline the args just above ---`
+    if(isFunction (value) &&
+      //XXX VERY UGLY HACK TO NOT INLINE SIDE EFFECTS
+     /^(?:get_|set_|i32_store|i32_load)/.test(body[0].description)) {
+      return [body[0]].concat(args)
+    }
     if(isFunction (value) && args.every(isBasic))
       return value.apply(null, args)
     //if a function is recursive, but called with known values

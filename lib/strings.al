@@ -9,6 +9,7 @@
 
   (def set_at (fun [s i v] {i32_store8 (add 4 s i) v}))
 
+  (export length length)
   (export at at)
   (export set_at set_at)
 
@@ -24,34 +25,29 @@
     ) initial start)
   ))
 
-  (export length length)
-  (export equal_at {fun [a a_start b b_start len] (block
-    ;; minimum lengths to compare.
-    (def min_len (min len (min
-          (sub (length a) a_start)
-          (sub (length b) b_start))))
-
-    ;; if neither string is long enough, return false
+  (export equal_at {fun [a a_start b b_start len]
     (if
-      (neq min_len len)
+      ;; if neither string is long enough, false
+      (gt len (min
+        (sub (length a) a_start)
+        (sub (length b) b_start) ))
       0
       (range 0 len 1
         (fun (acc i) (and acc (eq
               (at a (add a_start i))
-              (at b (add b_start i)) ))))
-    ))})
+              (at b (add b_start i)) ))) )
+    )})
 
-  (export compare {fun [a b] (block
-    (def len { min (length a) (length b)})
-    (if
-      ;; if min length is zero, is the other one longer?
-      (eq len 0)
-      (sub (length a) (length b))
-      (range 0 len 0 (fun (acc i)
-        [or acc (sub (at a i) (at b i))]
+  ;; compare each character up to length of shortest input
+  ;; else the long one is greater
+  (export compare {fun [a b]
+    (or
+      (range 0 {min (length a) (length b)} 0
+        (fun (acc i) [or acc (sub (at a i) (at b i))]
       ))
+      (sub (length a) (length b))
     )
-  )})
+  })
 
   (export slice {fun (str start end) [block
     (def len [sub (if end end (length str)) start])
@@ -64,7 +60,7 @@
 
   ;;haha, some bounds checking and errors would be good here
   (def copy {fun (source s_start s_end target t_start)
-    (range 0 (sub s_end s_start) 0 (fun (acc i)
+    (range 0 (sub s_end s_start) 0 (fun (acc i) ;;all the way to end
       (set_at target [add t_start i] [at source (add s_start i)])
     ))
   })

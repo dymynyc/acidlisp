@@ -41,6 +41,9 @@ module.exports = function (memory, globals, exports, imports) {
   exports.neq = function (a, b) {
     return +(a !== b)
   }
+  exports.eqz = function (a) {
+    return +(a === 0)
+  }
   exports.shl = function (a, b) {
     return +(a << b)
   }

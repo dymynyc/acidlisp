@@ -53,7 +53,6 @@ function needsReInline(body) {
   }))
 }
 
-
 function isRecursive (fn) {
   var {name, body} = parseFun(fn)
   //can't be recursive if it does not refer to itself.
@@ -86,6 +85,7 @@ function _loopify(args, argv, test, recurse, result) {
 
 var eqz = Symbol('eqz')
 
+var H = 0
 function loopify(fn, argv, scope) {
   var hygene = 1
   var {name, args, body} = parseFun(fn)
@@ -95,13 +95,18 @@ function loopify(fn, argv, scope) {
 
   //check if the test expression can be evaled,
   //if so, unroll the recursion.
-  scope = createScope(fn, (k, i) => argv[i], scope)
-  var _inline = a => inline_expr(a, scope, fn, hygene)
+  var _inline = a => {
+    return inline_expr(a, scope, fn, hygene)
+  }
 
-  var r = inline_expr(test, scope, fn, hygene)
-  if(isBasic(r)) return _inline(r ? result : recurse)
+  var _scope = createScope(fn, (k, i) => argv[i], scope)
+  var r = inline_expr(test, _scope, fn, hygene)
+  if(isBasic(r)) {
+    return inline_expr(r ? result : recurse, _scope, fn, hygene)
+  }
 
   //else, make sure we don't override the parameters!
+  //(doesn't work without this...)
   scope = createScope(fn, (k, i) => args[i], scope)
 
   //result and recurse might be the other way around, handle that.
@@ -111,6 +116,9 @@ function loopify(fn, argv, scope) {
     return _loopify(args, argv, _inline([eqz, test]), recurse.slice(1).map(_inline), _inline(result))
 }
 
+// loopify a function that is exported.
+// I havn't actually needed this, because usually
+// the looping function is an internal closure.
 function loopify_fun(fn, scope) {
   var hygene = 1
   var {name, args, body} = parseFun(fn)
@@ -206,11 +214,15 @@ function inline_expr (body, remap, fn, hygene, vars) {
     //if it's a FUNCTION that's a built in function, not user     |
     //defined. we can only inline that if all arguments are known.|
     //note, we already attempted to inline the args just above ---`
+/*
+// HMM what was this fixing?
+// I added this, but now removing it makes the tests pass...
     if(isFunction (value) &&
       //XXX VERY UGLY HACK TO NOT INLINE SIDE EFFECTS
      /^(?:get_|set_|i32_store|i32_load)/.test(body[0].description)) {
       return [body[0]].concat(args)
     }
+*/
     if(isFunction (value) && args.every(isBasic))
       return value.apply(null, args)
     //if a function is recursive, but called with known values

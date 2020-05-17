@@ -18,6 +18,12 @@
     s
   }))
 
+  (def range (fun (start end initial reduce)
+    ((fun R (acc i)
+      (if (lt i end) (R (reduce acc i) (add 1 i)) acc)
+    ) initial start)
+  ))
+
   (export length length)
   (export equal_at {fun [a a_start b b_start len] (block
     ;; minimum lengths to compare.
@@ -29,60 +35,39 @@
     (if
       (neq min_len len)
       0
-      [block
-        (def i 0)
-        (loop {and
-            (lt i len)
-            [eq (at a (add a_start i)) (at b (add b_start i))] }
-          (set i (add 1 i)) )
-        ;;if we got to the end it means they are equal
-        (eq i len)
-      ]
-    )
-  )})
+      (range 0 len 1
+        (fun (acc i) (and acc (eq
+              (at a (add a_start i))
+              (at b (add b_start i)) ))))
+    ))})
 
   (export compare {fun [a b] (block
-    (def len [add { min (length a) (length b)}])
-    (def i 0)
+    (def len { min (length a) (length b)})
     (if
       ;; if min length is zero, is the other one longer?
-      (eq len 0) (sub (length a) (length b))
-      {block
-        (loop
-          {and (lt i len)
-               [eq (def r [sub (at a i) (at b i)]) 0]}
-          (set i (add 1 i))
-        )
-        (if (lt i len) r 0)
-      }
+      (eq len 0)
+      (sub (length a) (length b))
+      (range 0 len 0 (fun (acc i)
+        [or acc (sub (at a i) (at b i))]
+      ))
     )
   )})
 
   (export slice {fun (str start end) [block
     (def len [sub (if end end (length str)) start])
     (def _str (create len))
-    (def i 0)
-    (loop
-      [lt i len]
-      {block
-        [set_at _str i {at str (add start i)}]
-        (set i (add 1 i))})
+    (range 0 len 0 (fun (acc i)
+      [set_at _str i {at str (add start i)}]
+    ))
     _str
   ]})
 
-  (def copy {fun (source s_start s_end target t_start) [block
-    (def i 0)
-    (def len (sub s_end s_start))
-    ;;haha, some bounds checking and errors would be good here
-      (loop
-        (lt i len)
-        (block
-          (set_at target [add t_start i] (at source (add s_start i)))
-          (set i (add 1 i))
-        )
-      )
-    0
-  ]})
+  ;;haha, some bounds checking and errors would be good here
+  (def copy {fun (source s_start s_end target t_start)
+    (range 0 (sub s_end s_start) 0 (fun (acc i)
+      (set_at target [add t_start i] [at source (add s_start i)])
+    ))
+  })
 
   (export copy copy)
   (export concat {fun (a b) [block

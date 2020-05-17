@@ -3,13 +3,14 @@ var acid = require('../')
 var syms = require('../symbols')
 
 var {
-  isRecursive, isInlineable, getUsedVars, inline, loopify
+  isRecursive, isInlineable, getUsedVars, inline, loopify,
+  inline_fun, inline_module
 } = require('../inline')
 
 var {
   isSymbol, isBasic, isDefined, isFunction, isArray, isCore,
   isNumber,
-  stringify, parseFun
+  stringify, pretty, parseFun
 } = require('../util')
 //okay, lets experiment with inlining.
 
@@ -220,5 +221,36 @@ tape('loopifyable, calling fun', function (t) {
     stringify(1*2*3*4*5*6*7*8*9*10*11)
   )
 
+  t.end()
+})
+
+tape('inline fun', function (t) {
+  var ast = acid.parse(`(fun multiply (a b)
+    ((fun (fn j k) (fn j k)) (fun (x y) (mul x y)) a b)
+  )`)
+  console.log(stringify(inline_fun(ast)))
+  t.equal(stringify(inline_fun(ast)), '(bound_fun multiply (a b) (mul a b) )')
+  t.end()
+})
+tape('inline module', function (t) {
+  var m = acid.eval(`(module
+    (def range (fun (end initial reduce)
+      ((fun R (acc i)
+        (if (lt i end) (R (reduce acc i) (add 1 i)) acc)
+      ) initial 0)
+    ))
+
+    (def at (fun (p i) {i32_load (add p i)}))
+
+    ;;checks if memory a...len is equal to b...len
+    (export {fun [a b len]
+      (range len 1
+        (fun (acc i) (and acc (eq
+              (at a (add a_start i))
+              (at b (add b_start i)) ))))
+    })
+  )`)
+  var _m = inline_module(m)
+  t.equal(stringify(_m).indexOf('reduce'), -1)
   t.end()
 })

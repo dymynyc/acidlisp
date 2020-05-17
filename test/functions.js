@@ -44,8 +44,6 @@ var outputs = [
 
 function makeTest(name, i, compiler) {
   tape(name+', compile functions:'+inputs[i], function (t) {
-//    var env = createEnv(Buffer.alloc(65536), {0:0})
-    //console.log('input', i, inputs[i])
     var module = compiler(inputs[i], env)
     for(var j = 0; j < outputs[i].length; j ++) {
       var args = outputs[i][j][0]

@@ -71,7 +71,6 @@ inputs.forEach(function (v, i) {
     var env = createEnv(Buffer.alloc(65536), {0:0})
     var load = require('../load')(__dirname, env)
     env.__proto__ = envify(load('../lib/strings'))
-
     var ast = hydrate(parse(inputs[i]), env)
     var value = ev(ast, env)
 
@@ -81,6 +80,8 @@ inputs.forEach(function (v, i) {
       t.equal(stringify(readBuffer(env.memory, value)), stringify(outputs[i]), 'eval, correct output')
 
     var m = toModule(inputs[i])
+    console.log("M", m)
+
     try {
       var fn = acid.wasm(m, env)
     } catch (e) {

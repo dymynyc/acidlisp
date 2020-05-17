@@ -52,7 +52,7 @@ module.exports = function (memory, globals, exports, imports) {
     throw new Error(m)
   }
   exports.set_global = function (i, v) {
-    globals[i] = v
+    return globals[i] = v
   }
   exports.get_global = function (i) {
     if(!isDefined(globals[i]))

@@ -13,11 +13,12 @@ var acid = require('../')
 //var flatten = require('../flatten')
 var env = {
   add: function (a, b) {
-    console.log('add',a,b)
     return a + b
   },
   sub: function (a, b) { return a - b },
-  lt:  function (a, b) { return a < b }
+  lt:  function (a, b) { return a < b },
+  gt:  function (a, b) { return a > b },
+
 }
 
 var inputs = [
@@ -25,7 +26,8 @@ var inputs = [
   '(add 1 2)',
   '(add 4 (add 3 (add 2 (add 1 0))))',
   '(block (def foo 17) (add foo 2))',
-  '{block (def i 0) (def sum 0) (loop [lt i 10] [def sum {add sum (def i [add i 1])}] sum)}',
+//  '{block (def i 0) (def sum 0) (loop [lt i 10] [def sum {add sum (def i [add i 1])}] sum)}',
+  '{(fun R (sum i) (if (gt i 0) (R (add i sum) (sub i 1)) sum)) 0 10}'
 ]
 
 var outputs = [
@@ -33,6 +35,7 @@ var outputs = [
   3,
   10,
   19,
+  //55,
   55
 ]
 
@@ -50,15 +53,16 @@ inputs.forEach(function (_, i) {
   })
 })
 
-inputs.forEach(function (_, i) {
-  tape('js:'+inputs[i] + ' => ' + outputs[i], function (t) {
-    t.equal(acid.js_eval(toModule(inputs[i]))(), outputs[i])
-    t.end()
-  })
-})
-
+//inputs.forEach(function (_, i) {
+//  tape('js:'+inputs[i] + ' => ' + outputs[i], function (t) {
+//    t.equal(acid.js_eval(toModule(inputs[i]))(), outputs[i])
+//    t.end()
+//  })
+//})
+//
 inputs.forEach(function (_, i) {
   tape('wat:'+inputs[i] + ' => ' + outputs[i], function (t) {
+    console.log(acid.wat(toModule(inputs[i])))
     t.equal(acid.wasm(toModule(inputs[i]))(), outputs[i])
     t.end()
   })

@@ -1,10 +1,18 @@
 var syms = require('./symbols')
 var {
-  isArray, isSymbol, isEmpty, pretty, meta,
-  isBoundFun, isBoundMac, isSystemFun, isCore
+  isArray, isSymbol, isEmpty, isBoundFun, isFun, parseFun,
+  isSystemFun, isFunction, isCore, isLookup,
+  pretty, meta,
 } = require('./util')
 
 var lookup = require('./lookup')
+
+var { bound_fun }  = require('./internal')
+
+function bind_fun (fun, scope) {
+  var {name,args,body} = parseFun(fun)
+  return meta(fun, [bound_fun, name, args, body, scope])
+}
 
 function find(obj, fn) {
   for(var k in obj)
@@ -34,10 +42,12 @@ function unroll (fun, funs, key) {
     : 'fun__' + Object.keys(funs).length
     )
   }
+
   funs[getName()] = fun
 
   if(isSystemFun(fun)) return funs //system funs don't have a body
 
+  //handle if the function body is it self a bound function.
   var body = fun[3]
   if(isBoundFun(body)) {
     if(k = find(funs, body)) fun[3] = k
@@ -45,8 +55,21 @@ function unroll (fun, funs, key) {
     return funs
   }
 
-  var scope = fun[4]
+  var scope = {__proto__: fun[4]}
+  var args = fun[2]
+  for(var i = 0; i < args.length; i++) {
+    scope[args[i].description] = {value: null, hasValue: false, arg: true}
+  }
+  if(fun[1])
+    scope[fun[1].description] = {value: fun, hasValue: true, self: true}
   ;(function R (ast) {
+    if(isFun(ast[0])) {
+      //XXX note: this function cannot access vars in the immediate
+      //enclosing scope. TODO
+      ast[0] = meta(ast[0], bind_fun(ast[0], scope))
+    }
+    var sym = ast[0]
+
     if(isBoundFun(ast[0])) {
       if(k = find(funs, ast[0])) ast[0] = Symbol(k)
       else {
@@ -54,22 +77,46 @@ function unroll (fun, funs, key) {
         ast[0] = Symbol(find(funs, ast[0]))
       }
     }
-    var fn
-    var sym = ast[0]
-    if(isSymbol(sym) && !isCore(sym)) {
-      if(isSystemFun(fn = lookup(scope, sym, false))) {
-        if(!find(funs, fn))
-          unroll(fn, funs, sym.description)
+
+    if(isLookup(sym)) {
+      var fn = lookup(scope, sym, false)
+      if(isArray(sym))
+        ast[0] = Symbol(find(funs, fn))
+
+      if(isSystemFun(fn) || isBoundFun(fn)) {
+        if(k = find(funs, fn)) ast[0] = Symbol(k)
+        else {
+          unroll(fn, funs)
+          ast[0] = Symbol(find(funs, fn))
+        }
       }
-      if(isBoundFun(fn = lookup(scope, sym, false))) {
-        if(!find(funs, fn))
-          unroll(fn, funs, sym.description)
+      else if(isFunction(fn)) {
+        if(isArray(sym)) throw new Error('referred to a built-in via path name:'+pretty(sym))
+        //it's a built in, so ignore it. the compiler knows what to do.
+        ;
+      }
+      else {
+        //should never happen
+        throw new Error('should never happen, lookup failed:'+pretty(sym))
       }
     }
-    else if(isBoundMac(fn))
-      throw new Error('macros should be gone by unroll time:'+pretty(fn))
-    for(var i = 1; i < ast.length; i++)
+    if(isSymbol(ast[0]) && ast[0] === syms.def) {
+      //keep track of local variables, but don't replace them
+      //(maybe later?)
+      scope[ast[1].description] = {value:null, hasValue: false}
+      R(ast[2])
+      return
+    }
+
+    for(var i = 1; i < ast.length; i++) {
       if(isArray(ast[i])) R(ast[i])
+      else if(isSymbol(ast[i])) {
+        var _value = lookup(scope, ast[i], false, true)
+        //XXX instead make these into global defs.
+        //let the inliner handle them.
+        if(_value.hasValue !== false) ast[i] = _value.value
+      }
+    }
   })(body)
 
   return funs
@@ -107,15 +154,12 @@ function checkUnbound (fn, _scope) {
 function unbind (fun, k) {
   if(isSystemFun(fun)) return meta(fun, [fun[0], k, fun[2], fun[3]])
 
-  var sym = isBoundFun(fun) ? syms.fun : isBoundMac(fun) ? syms.mac : null
-  if(!sym) throw new Error('neither a fun or a mac!:'+pretty(fun))
-
   if(fun[1]) //named
-    return meta(fun, [sym, fun[1], fun[2], fun[3]])
+    return meta(fun, [syms.fun, fun[1], fun[2], fun[3]])
   else if(k)
     //TODO if the function is recursive, replace internal name for itself.
     //this is necessary for inline functions.
-    return meta(fun, [sym, k, fun[2], fun[3]])
+    return meta(fun, [syms.fun, k, fun[2], fun[3]])
   else
     throw new Error('function key not provided')
 }
@@ -126,14 +170,12 @@ function assertUnbound(funs) {
     var v = checkUnbound(fn)
     if(v) throw new Error('found unbound variables:'+Object.keys(v).join(', ') + ' in fun:'+(fn[1]||k))
   }
-
 }
 
 module.exports = function (funs) {
-  if(isBoundFun(funs) || isBoundMac(funs)) {
+  if(isBoundFun(funs)) {
     var fun = funs
     funs = unroll(fun, {})
-    //assertUnbound(funs)
     return [syms.module]
       .concat(
         Object.keys(funs).reverse()

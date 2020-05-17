@@ -3,6 +3,8 @@ var {
   isMac, isDefined, parseFun,pretty, isBoundFun, isBoundMac, isSystemFun,
 } = require('./util')
 
+var syms = require('./symbols')
+
 function find (ary, iter) {
   var value
   for(var i = 0; i < ary.length; i++)
@@ -22,26 +24,29 @@ function toName(sym) {
   )
 }
 
-module.exports = function lookup(scope, sym, doThrow) {
-  var value
+module.exports = function lookup(scope, sym, doThrow, raw) {
+  var value, _value
   if(isArray(sym)) {
+    if(sym[0] === syms.get)
+      sym = sym.slice(1)
     value = scope
     for(var i = 0; i < sym.length; i++) {
       if(isArray(value)) {
         value = find(value, ([k,v]) => {
-          if(k.description === sym[i].description)
-            return v //XXX
+          if(k.description === sym[i].description) {
+            return v //XXX? surely this is wrong
+          }
         })
       }
       else if(isObject(value) && isObject(value[sym[i].description])) {
-        value = getValue(value[sym[i].description]) // XXX .value
+        value = getValue(_value = value[sym[i].description]) // XXX .value
       }
       else if(doThrow !== false)
         throw new Error('could not resolve:'+toName(sym))
       else
         return undefined
     }
-    return value
+    return raw ? _value : value
   }
   if(!isSymbol(sym))
     throw new Error('cannot lookup non-symbol:'+sym)
@@ -50,9 +55,9 @@ module.exports = function lookup(scope, sym, doThrow) {
       throw new Error('cannot resolve symbol:'+String(sym))
     return undefined
   }
-  value = getValue(scope[sym.description])
+  value = getValue(_value = scope[sym.description])
   if(undefined === value) {
     if(isArray(value)) throw new Error('expected:{value:...}, got:' + sym.description +'='+pretty(value))
   }
-  return value //isFunction(value) ? value : value.value
+  return raw ? _value : value
 }

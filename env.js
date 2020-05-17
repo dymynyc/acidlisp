@@ -41,6 +41,9 @@ module.exports = function (memory, globals, exports, imports) {
   exports.neq = function (a, b) {
     return +(a !== b)
   }
+  exports.eqz = function (a) {
+    return +(a === 0)
+  }
   exports.shl = function (a, b) {
     return +(a << b)
   }
@@ -52,7 +55,7 @@ module.exports = function (memory, globals, exports, imports) {
     throw new Error(m)
   }
   exports.set_global = function (i, v) {
-    globals[i] = v
+    return globals[i] = v
   }
   exports.get_global = function (i) {
     if(!isDefined(globals[i]))

@@ -3,91 +3,72 @@
   (def mem (import "acid-memory"))
 
   (def min {fun [x y] (if (lt x y) x y)})
-  (def length {mac [w] &(i32_load $w)})
+  (def length {fun [w] (i32_load w)})
 
-  (def at (mac [s i] &{i32_load8 (add 4 $s $i)}))
+  (def at (fun [s i] {i32_load8 (add 4 s i)}))
 
-  (def set_at (mac [s i v] &{i32_store8 (add 4 $s $i) $v}))
+  (def set_at (fun [s i v] {i32_store8 (add 4 s i) v}))
 
+  (export length length)
   (export at at)
   (export set_at set_at)
 
-  (def create (mac (len) &{block
-    (def s (mem.alloc (add 4 $len)))
-    (i32_store s $len)
+  (def create (fun (len) {block
+    (def s (mem.alloc (add 4 len)))
+    (i32_store s len)
     s
   }))
 
-  (def incr {mac [d] &(def $d (add $d 1))})
+  (def range (fun (start end initial reduce)
+    ((fun R (acc i)
+      (if (lt i end) (R (reduce acc i) (add 1 i)) acc)
+    ) initial start)
+  ))
 
-  (def each {mac [v start end iter]
-    &(block
-      (def $v $start)
-      (loop
-        (lt $v $end)
-        [block $iter (incr $v)]
-      ) )})
-
-  (export length length)
-  (export equal_at {fun [a a_start b b_start len] (block
-    ;; minimum lengths to compare.
-    (def min_len (min len (min
-          (sub (length a) a_start)
-          (sub (length b) b_start))))
-
-    ;; if neither string is long enough, return false
+  (export equal_at {fun [a a_start b b_start len]
     (if
-      (neq min_len len)
+      ;; if neither string is long enough, false
+      (gt len (min
+        (sub (length a) a_start)
+        (sub (length b) b_start) ))
       0
-      [block
-        (def i 0)
-        (loop {and
-            (lt i len)
-            [eq (at a (add a_start i)) (at b (add b_start i))] }
-          (incr i) )
-        ;;if we got to the end it means they are equal
-        (eq i len)
-      ]
-    )
-  )})
+      ;;returns 1 or 0
+      ((fun R (i)
+        (if (and (lt i len)
+              [eq (at a (add a_start i)) (at b (add b_start i))])
+              (R (add 1 i))
+          (eq i len)) ;;return true if we made it to end
+      ) 0)
+    )})
 
+  ;; compare each character up to length of shortest input
+  ;; else the long one is greater
   (export compare {fun [a b] (block
-    (def len [add { min (length a) (length b)}])
-    (def i 0)
-    (if
-      ;; if min length is zero, is the other one longer?
-      (eq len 0) (sub (length a) (length b))
-      {block
-        (loop
-          {and (lt i len)
-               [eq (def r [sub (at a i) (at b i)]) 0]}
-          (incr i)
-        )
-        (if (lt i len) r 0)
-      }
+    (def len {min (length a) (length b)})
+      ;;returns 0 or 1 or -1
+      ((fun R (acc i)
+        (if (and (lt i len) (eq 0 acc))
+          (R (sub (at a i) (at b i)) (add 1 i))
+          acc) ;;return true if we made it to end
+      ) 0 0)
     )
-  )})
+  })
 
   (export slice {fun (str start end) [block
     (def len [sub (if end end (length str)) start])
     (def _str (create len))
-    (def i 0)
-    (loop
-      [lt i len]
-      {block
-        [set_at _str i {at str (add start i)}]
-        (incr i)})
+    (range 0 len 0 (fun (acc i)
+      [set_at _str i {at str (add start i)}]
+    ))
     _str
   ]})
 
-  (def copy {fun (source s_start s_end target t_start) [block
-  ;;  (def i 0)
-    ;;haha, some bounds checking and errors would be good here
-    (each i 0 s_end
-      (set_at target [add t_start i] (at source (add s_start i)))
-    )
-    0
-  ]})
+  ;;haha, some bounds checking and errors would be good here
+  (def copy {fun (source s_start s_end target t_start)
+    (range 0 (sub s_end s_start) 0 (fun (acc i) ;;all the way to end
+      (set_at target [add t_start i] [at source (add s_start i)])
+    ))
+  })
 
   (export copy copy)
   (export concat {fun (a b) [block

@@ -87,24 +87,28 @@ function _loopify(args, argv, test, recurse, result) {
 var eqz = Symbol('eqz')
 
 function loopify(fn, argv, scope) {
-  var hygene = 1, vars = {}
+  var hygene = 1
   var {name, args, body} = parseFun(fn)
 
   var [_if, test, result, recurse] = body
   assert.ok(_if === syms.if)
 
+  //check if the test expression can be evaled,
+  //if so, unroll the recursion.
   scope = createScope(fn, (k, i) => argv[i], scope)
+  var _inline = a => inline_expr(a, scope, fn, hygene)
 
-  //if test can be evaled, we can flatten the loop.
-  var r = inline_expr(test, scope, fn, hygene, vars)
-  if(isBasic(r))
-    return inline_expr(r ? result : recurse, scope, fn, hygene, vars)
+  var r = inline_expr(test, scope, fn, hygene)
+  if(isBasic(r)) return _inline(r ? result : recurse)
 
-  //end and recurse might be the other way around, handle that.
+  //else, make sure we don't override the parameters!
+  scope = createScope(fn, (k, i) => args[i], scope)
+
+  //result and recurse might be the other way around, handle that.
   if(calls(result, name))
-    return _loopify(args, argv, test, result.slice(1), recurse)
+    return _loopify(args, argv, _inline(test), result.slice(1).map(_inline), _inline(recurse))
   else
-    return _loopify(args, argv, [eqz, test], recurse.slice(1), result)
+    return _loopify(args, argv, _inline([eqz, test]), recurse.slice(1).map(_inline), _inline(result))
 }
 
 function loopify_fun(fn, scope) {
@@ -117,9 +121,8 @@ function loopify_fun(fn, scope) {
   function _loopify (args, test, recurse, result) {
     return [syms.fun, name, args, [syms.loop, test, blockify(args, recurse), result]]
   }
-
   //end and recurse might be the other way around, handle that.
- if(calls(result, name))
+  if(calls(result, name))
     return _loopify(args, test, result.slice(1), recurse)
   else
     return _loopify(args, [eqz, test], recurse.slice(1), result)
@@ -130,6 +133,8 @@ function inline_expr (body, remap, fn, hygene, vars) {
   var R = (body) => inline_expr(body, remap, fn, hygene, vars)
   var {name} = parseFun(fn)
   name = isSymbol(name) ? name.description : null
+  if(!isDefined(body))
+    throw new Error('cannot inline undefined!')
   if(isBasic(body)) return body
   else if(isSymbol(body)) {
     var r = lookup(remap, body, false, true)
@@ -169,6 +174,11 @@ function inline_expr (body, remap, fn, hygene, vars) {
   else if(body[0] === syms.def) {
     var k = body[1]
     var v = R(body[2]) //didn't forget to recurse into value this time!
+    //console.log("INLINE_def", k, v, remap)
+
+    //okay problem is we are inlining a function that can see
+    //another function in it's closure that we can't see.
+
     if(isBasic(v)) {
       remap[k.description] = {value: v}
       //if this variable gets used again, keep the def
@@ -202,8 +212,12 @@ function inline_expr (body, remap, fn, hygene, vars) {
     //if a function is recursive, but called with known values
     //then it can be inlined. or if it's not recursive.
     else if(isFun(value) && (
-        args.every(isBasic) || !isRecursive(value)))
+        (isRecursive(value) && args.every(isBasic)) ||
+        isLoopifyable(value) ||
+        !isRecursive(value)
+      )) {
       return inline(value, args, remap, hygene)
+    }
     else
       return [body[0]].concat(args)
   }
@@ -217,10 +231,11 @@ function reinline(body, remap, fn, hygene) {
 
 function inline (fn, argv, scope, hygene) {
   hygene = hygene || 0
+  var {body, scope: _scope} = parseFun(fn)
   if(isLoopifyable(fn)) return loopify(fn, argv, scope)
   return reinline(
-    parseFun(fn).body,
-    createScope(fn, (k,i) => argv[i], scope||{}),
+    body,
+    createScope(fn, (k,i) => argv[i], _scope || scope || {}),
     fn, ++hygene
   )
 }

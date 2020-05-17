@@ -114,6 +114,8 @@ function unroll (fun, funs, key) {
         var _value = lookup(scope, ast[i], false, true)
         //XXX instead make these into global defs.
         //let the inliner handle them.
+        if(!_value)
+          throw new Error('undefined variable:'+ast[i].description)
         if(_value.hasValue !== false) ast[i] = _value.value
       }
     }

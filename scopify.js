@@ -1,7 +1,7 @@
 var {isArray, isSymbol} = require('./util')
 var syms = require('./symbols')
 
-module.exports = function scopify (ast, scope, current, hygene) {
+function scopify (ast, scope, current, hygene) {
   current = current || 0
   hygene = hygene || 0
   if(isArray(ast)) {
@@ -33,4 +33,9 @@ module.exports = function scopify (ast, scope, current, hygene) {
     }
   }
   return hygene
+}
+
+module.exports = function (ast) {
+  scopify(ast, {})
+  return ast
 }

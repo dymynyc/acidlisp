@@ -15,6 +15,7 @@ var env = {
   e: {value:0}, f: {value:1},
 //  and: (a)    => a & 1, //wtf?
   add: (a, b) => a + b,
+  mul: (a, b) => a * b,
   lt:  (a, b) => a < b,
   sub: (a, b) => a - b,
 }
@@ -26,8 +27,8 @@ var inputs = [
   '(if a (if b 2 1) 0)', //(AND a b)
   '(if d 1 (if e 1 0))', //(OR d e)
   '(if d 1 (if e 1 (if f 1 0)))', //(OR d e)
-  '(block (def i 1) [loop (lt i 100) (def i (add i i)) i])',
-  '(block (def i 1) [loop (if (lt i 50) 1 0) (def i (add i i)) i])',
+  '((fun R (i) (if (lt i 100) (R (add i i)) i)) 1)',
+  '((fun R (i) (if (lt i 50) (R (mul i 2)) i)) 1)',
   '(if (if (sub (lt a 4) b) 10 0) 10 -10)',
   '(if [block {def x b} (if (sub (lt x 4) b) 10 0) ] 10 -10)'
 ]

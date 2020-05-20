@@ -6,6 +6,7 @@ var WatStack   = require('./compile/wat-stack')
 var wat2wasm   = require('./wat2wasm')
 var js         = require('./compile/js')
 var hydrate    = require('./hydrate')
+var scopify    = require('./scopify')
 var createEnv  = require('./env')
 var {
   isString, isArray, stringify, pretty, isFun, isBoundFun, isSymbol
@@ -46,12 +47,12 @@ exports.js = function (src, env, filename) {
 
 exports.wat = function (src, env, filename) {
   env = env || createEnv()
-  var r = inline(evalIf(src, env, filename))
+  var r = scopify(inline(evalIf(src, env, filename)))
   return Wat(unroll(r), env)
 }
 exports.watStack = function (src, env, filename) {
   env = env || createEnv()
-  var r = inline(evalIf(src, env, filename))
+  var r = scopify(inline(evalIf(src, env, filename)))
   return WatStack(unroll(r), env)
 }
 

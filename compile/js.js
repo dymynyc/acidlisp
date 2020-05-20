@@ -1,12 +1,14 @@
 var {
   isDefined, isSymbol, isArray,
-  isDef, isEmpty, isFunction, isNumber, isBound,
-  eqSymbol, equals, stringify, parseFun
+  isDef, isEmpty, isFunction, isNumber, 
+  stringify, parseFun
 } = require('../util')
+
+var  syms = require('../symbols')
 
 function getDefs (ast, defs) {
   defs = defs || {}
-  if(isArray(ast) && isDef(ast[0]))
+  if(isArray(ast) && ast[0] === syms.def)
     defs[ast[1].description] = true
   else if(isArray(ast))
     ast.forEach(a => getDefs(a, defs))

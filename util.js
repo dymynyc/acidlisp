@@ -17,10 +17,6 @@ function isSymbol(s) {
   return 'symbol' === typeof s
 }
 
-function isDef(s) {
-  return syms.def === s
-}
-
 function isEmpty (e) {
   return isArray(e) && e.length === 0
 }
@@ -31,10 +27,6 @@ function isFunction (f) {
 
 function isFun (f) {
   return isArray(f) && f[0] === syms.fun
-}
-
-function isMac (m) {
-  return isArray(m) && m[0] === syms.mac
 }
 
 function isBoundFun (ary) {
@@ -68,13 +60,6 @@ var isBuffer = Buffer.isBuffer
 function isBasic(b) {
   return isBuffer(b) || isNumber(b) || isNull(b) || isBoolean(b) || isString(b)
 }
-function isBound(b) {
-  return (
-    isFunction(b) ||
-    (isArray(b) && b.every(isBound)) ||
-    isBasic(b)
-  )
-}
 
 function isCore (c) {
   return isSymbol(c) && c === syms[c.description]
@@ -87,22 +72,10 @@ function isLookup(sym) {
   )
 }
 
-function eqSymbol(sym, str) {
-  return isSymbol(sym) && str === sym.description
-}
-
-//(def (name args...) (body))
-function equals (a, b) {
-  if(isArray(a) && isArray(b))
-    return (a.length === b.length) && a.every((v, i) => equals(v, b[i]))
-  return a === b
-}
-
 exports.isDefined   = isDefined
 exports.isSymbol    = isSymbol
 exports.isArray     = isArray
 exports.isObject    = isObject
-exports.isDef       = isDef
 exports.isEmpty     = isEmpty
 exports.isNull      = isNull
 exports.isBoolean   = isBoolean
@@ -110,22 +83,12 @@ exports.isString    = isString
 exports.isBuffer    = isBuffer
 exports.isFunction  = isFunction
 exports.isFun       = isFun
-exports.isMac       = isMac
 exports.isBoundFun  = isBoundFun
 exports.isSystemFun = isSystemFun
 exports.isNumber    = isNumber
 exports.isBasic     = isBasic
-exports.isBound     = isBound
 exports.isCore      = isCore
 exports.isLookup    = isLookup
-exports.eqSymbol    = eqSymbol
-exports.equals      = equals
-
-exports.clone = function clone (ast) {
-  if(Array.isArray(ast))
-    return ast.map(clone)
-  return ast
-}
 
 function parseFun (fun) {
   if(fun.length < 3 || fun.length > 5) {
@@ -144,14 +107,6 @@ function parseFun (fun) {
 }
 
 exports.parseFun = parseFun
-
-exports.toEnv = function (args, argv, _env) {
-  var env = {__proto__: _env}
-  if(argv.length < args.length)
-    throw new Error('too few arguments, expected:'+args.length+' got:'+argv.length)
-  args.forEach((s, i) => env[s.description] = argv[i])
-  return env
-}
 
 function indent(s) {
     return (''+s).split('\n').map(line => '  ' + line).join('\n')
@@ -201,6 +156,7 @@ function pretty (s, inject) {
 
 exports.stringify = stringify
 exports.pretty = pretty
+
 function getThings (tree, isThing, things) {
   things = things || []
   ;(function maybe(it) {
@@ -219,41 +175,14 @@ function getThings (tree, isThing, things) {
 exports.getFunctions = function (tree, funs) {
   return getThings(tree, isFun, funs)
 }
-//exports.getFunctions = function (tree, funs) {
-//  return getThings(tree, , funs)
-//}
 
-exports.getStrings = function (tree, strings) {
-  return getThings(tree, isBuffer, strings)
-}
-
-exports.toRef = function (n, fun) {
-  if(!~n) throw new Error('missing reference, for:'+stringify(fun))
-  return Symbol('$f_'+n)
-}
 var isRef = exports.isRef = function (ref) {
   return isSymbol(ref) && /^\$f_\d+$/.test(ref.description)
-}
-exports.fromRef = function (ref) {
-  return isRef(ref) ? +ref.description.substring(3) : ref
 }
 
 exports.readBuffer = function (memory, ptr) {
   var len = memory.readUInt32LE(ptr)
   return memory.slice(4+ptr, 4+ptr+len)
-}
-
-var isExpressionTree = exports.isExpressionTree = function (tree) {
-  if(!isArray(tree)) return true
-  else if(
-    tree[0] === syms.if ||
-    tree[0] === syms.loop ||
-    tree[0] === syms.block ||
-    isSymbol(tree[0]) && /_store\d*$/.test(tree[0].description)
-
-  ) return false
-  else
-    return tree.every(exports.isExpressionTree)
 }
 
 exports.meta = function meta (source, dest) {
@@ -263,20 +192,4 @@ exports.meta = function meta (source, dest) {
   if(!dest.meta) dest.meta = source.meta
 
   return dest
-}
-
-exports.dump = function dump(scope) {
-  if(!scope || isBoundFun(scope) || isBoundMac(scope)|| isBasic(scope)|| isFun(scope) || isMac(scope) || isFunction(scope))
-    return scope
-  var o = {}
-  ;(function R (scope) {
-    if(!scope) return
-    if(isArray(scope)) return scope
-    else {
-      for(var k in scope)
-      o[k] = dump(scope[k])
-      R(scope.__proto__)
-    }
-  })(scope)
-  return o
 }

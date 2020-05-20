@@ -36,12 +36,11 @@ var scope = {
 
 var test_if = `(fun (test t f) {if test t f})`
 
-
-
 //this recursive function could be converted into a loop.
 //actually it would be quite complicated. depends on the stack
 //to only apply an action on the way out. but it also
 //does (sub N 1) before recursing.
+
 var recursive = `
 (fun R (x N)
   (if (lte N 0) x (R (add 1 x) (sub N 1)) )
@@ -52,16 +51,16 @@ var vars = `(fun (x y) {block
   (mul z z)
 })`
 
-var loop = `(fun (N)
-(block
-  (def sum 0)
-  (def i 0)
-  (loop (lt i N)
-    (block
-      (def sum (add sum (add 1 i)))
-      (def i (add 1 i)) ))
-  sum
-))`
+//var loop = `(fun (N)
+//(block
+//  (def sum 0)
+//  (def i 0)
+//  (loop (lt i N)
+//    (block
+//      (def sum (add sum (add 1 i)))
+//      (def i (add 1 i)) ))
+//  sum
+//))`
 
 //pipe((range 0 10) sum)
 
@@ -85,8 +84,8 @@ var tests = [
   [test_if, '(1 b c)', scope, 'b'],
   [test_if, '(0 b c)', scope, 'c'],
   [recursive, '(y 3)', scope, '(add 1 (add 1 (add 1 y)))'],
-  [recursive, '(x M)', scope],
-  [vars, '(a b)', scope, '(block (def z (add a b)) (mul z z))'],
+  [recursive, '(x M)', scope, '(scope (block (def x x) (def N M) (loop (eqz (lte N 0)) (block (def x (add 1 x)) (def N (sub N 1))) x)))'],
+  [vars, '(a b)', scope, '(scope (block (def z (add a b)) (mul z z)))'],
   [vars, '(1 2)', scope, '9'],
 //  [loop, '(10)', scope, '55']
 ]
@@ -97,11 +96,11 @@ tape('isRecursive', function (t) {
   t.end()
 })
 
-tape('getUsedVars', function (t) {
-  var vars = getUsedVars(acid.parse(loop))
-  console.log(vars)
-  t.end()
-})
+//tape('getUsedVars', function (t) {
+//  var vars = getUsedVars(acid.parse(loop))
+//  console.log(vars)
+//  t.end()
+//})
 
 tests.forEach(function (v, i) {
   tape('inline:('+v[0]+' '+v[1]+')', function (t) {
@@ -109,41 +108,13 @@ tests.forEach(function (v, i) {
     var start = Date.now()
     var fn = acid.parse(src)
     var argv = acid.parse(args)
-    t.equal(isInlineable(fn, argv), !!output)
-    if(isInlineable(fn, argv))
-      var ast = inline(fn, argv, scope)
-//    else
-//      var ast = loopify(fn)
+    var ast = inline(fn, argv, scope)
     console.log('time', Date.now()- start)
     console.log(output)
-    if(output)
-      t.equal(stringify(ast), output)
-    else
-      t.notOk(stringify(ast))
+    t.equal(stringify(ast), output)
     t.end()
   })
 })
-
-/*
-(fun fact (n) (if (eq 0 n) 1 (mul n (fact (sub n 1))))
-
-(fun range (start end initial) (fun (reduce)
-  ((fun R (acc i)
-    (if (gte i end) (reduce acc i) (R (reduce acc i) (add i 1)))
-  ) initial start)
-))
-
-((range 1 n 1) mul)
-
-(fun (n) (block
-  (def r 1)
-  (loop (gt n 0)
-    (set r (mul r n))
-    (set n (sub n 1))
-  )
-  r
-)
-*/
 
 tape('loopify inlineable', function (t) {
   var ast = acid.parse(recursive)
@@ -151,13 +122,13 @@ tape('loopify inlineable', function (t) {
   t.equal(stringify(loopify(ast, acid.parse('(7 10)'), scope)), '17')
 
   //in this test, the test is evalable, so the loop can be flattened.
-  t.equal(stringify(loopify(ast, acid.parse('(x 5)'), scope)), 
+  t.equal(stringify(loopify(ast, acid.parse('(x 5)'), scope)),
     '(add 1 (add 1 (add 1 (add 1 (add 1 x)))))'
   )
   //x is mutated so must be a variable.
   t.equal(
     stringify(loopify(ast, acid.parse('(7 M)'), scope)),
-    '(block (def x 7) (def N M) (loop (eqz (lte N 0)) (block (def x (add 1 x)) (def N (sub N 1))) x))')
+    '(scope (block (def x 7) (def N M) (loop (eqz (lte N 0)) (block (def x (add 1 x)) (def N (sub N 1))) x)))')
   t.end()
 })
 

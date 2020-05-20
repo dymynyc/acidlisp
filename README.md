@@ -207,6 +207,24 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+## 20/5/2020
+
+implemented scope blocks. does a recursive check first, doesn't
+add a scope unless there is a def. a  scope that doesn't contain
+a def doesn't do anything. the advantage of this is just to make
+the intermediate output simpler, which makes the tests nicer,
+but that's important.
+
+Not sure how this will work for big unrolled loops, i.e. implementing
+a hash function. It might create many many variables, instead of reusing
+them. It's probably easier to have another pass that minimizes the
+number of variables.
+
+## 19/5/2020
+
+idea: scope block. it works like a block, but has a new scope.
+any def statements inside the do not override the parent scope.
+
 ## 17/5/2020
 
 okay I got inlining actually working, including loops

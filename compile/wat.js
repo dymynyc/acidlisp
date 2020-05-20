@@ -77,8 +77,6 @@ function toName(fn_name) {
   return S(isRef(fn_name) ? fromRef(fn_name) : '$'+fn_name.description)
 }
 
-//TODO: fix this pointers thing
-var pointers = []
 function compile (ast, isBlock) {
   if(isArray(ast)) {
     //first, check if it's a core method
@@ -125,7 +123,6 @@ exports.module = function (ast, env) {
   var imports = getImports(ast)
   var funs = getFunctions(ast)
   var ptr = 0, free = 0
-  pointers = []
   env = env || {}
   var free, data
   var memory = env.memory

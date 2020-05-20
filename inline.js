@@ -47,6 +47,13 @@ function isLoopifyable (fn) {
   )
 }
 
+function scopify (expr) {
+  return (function R (expr) {
+    return isArray(expr) && (syms.def === expr[0] ? true : expr.find(R))
+  })(expr) ? [syms.scope, expr] : expr
+}
+
+
 function blockify (args, argv, result) {
   return [syms.block]
     .concat(args.map((k, i) => [syms.def, k, argv[i]]))
@@ -54,8 +61,8 @@ function blockify (args, argv, result) {
 }
 
 function create_loop(args, argv, test, recurse, result) {
-  return blockify(args, argv,
-    [syms.loop, test, blockify(args, recurse), result])
+  return scopify(blockify(args, argv,
+    [syms.loop, test, blockify(args, recurse), result]))
 }
 
 var eqz = Symbol('eqz')
@@ -159,15 +166,21 @@ function inline_expr (body, remap) {
   }
 }
 
+//function wrap(expr) {
+//  return isBasic(expr) || isSymbol(expr) || 
+//    (isArray(expr) && expr[0] === syms.scope)
+//  ? expr : [syms.scope, expr]
+//}
+
 function inline (fn, argv, scope, hygene) {
   hygene = hygene || 0
   var {body, scope: _scope} = parseFun(fn)
   if(isLoopifyable(fn)) return loopify(fn, argv, scope)
-  return inline_expr(
+  return scopify(inline_expr(
     body,
     createScope(fn, argv, _scope || scope || {}),
     fn, ++hygene
-  )
+  ))
 }
 
 function inline_fun (fn) {

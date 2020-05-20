@@ -1,5 +1,6 @@
 
 exports.block   = Symbol('block')
+exports.scope   = Symbol('scope')
 exports.if      = Symbol('if')
 exports.and     = Symbol('and')
 exports.or      = Symbol('or')

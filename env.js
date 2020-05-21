@@ -5,17 +5,17 @@ module.exports = function (memory, globals, exports, imports) {
   globals = globals || {0:0}
 
   exports.add = function (...args) {
-    var r = args.reduce((a,b) => a + b)
+    var r = args.reduce((a,b) => (a + b)|0)
     return r
   }
   exports.sub = function (...args) {
-    return args.reduce((a, b) => a - b)
+    return args.reduce((a, b) => (a - b)|0)
   }
   exports.mul = function (...args) {
-    return args.reduce((a, b) => a * b)
+    return args.reduce((a, b) => (a * b)|0)
   }
   exports.div = function (...args) {
-    return args.reduce((a, b) => a / b)
+    return args.reduce((a, b) => (a / b)|0)
   }
   exports.mod = function (a, b) {
     return a % b

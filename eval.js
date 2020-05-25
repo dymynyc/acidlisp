@@ -62,6 +62,17 @@ var ev = wrap(function (ast, scope) {
       for(var i = 1; i < ast.length; i++) value = ev(ast[i], scope)
       return value
     }
+
+    if(ast[0] === syms.batch) {
+      var args = ast[1], argv = ast[2]
+      if(args.length != argv.length)
+        throw new Error('batch: number of values must batch vars, got:'+argv.length+', expected:'+args.length)
+      var values = argv.map(v => ev(v, scope))
+      for(var i = 0; i < args.length; i++)
+        value = (scope[args[i].description] = {value: values[i]}).value
+      return value
+    }
+
     //modules test doesn't use this yet...
     if(ast[0] === syms.get) {
       return lookup(scope, ast.slice(1))

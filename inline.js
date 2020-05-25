@@ -61,9 +61,10 @@ function scopify (expr) {
 
 
 function blockify (args, argv, result) {
-  return [syms.block]
-    .concat(args.map((k, i) => [syms.def, k, argv[i]]))
-    .concat(result ? [result] : [])
+  var batch = [syms.batch, args, argv]
+  return result ? [syms.block, batch, result] : batch
+//  .concat(args.map((k, i) => [syms.def, k, argv[i]]))
+//    .concat(result ? [result] : [])
 }
 
 function create_loop(args, argv, test, recurse, result) {

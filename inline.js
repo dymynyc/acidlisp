@@ -2,6 +2,7 @@ var assert = require('assert')
 var syms = require('./symbols')
 var lookup = require('./lookup')
 var internal = require('./internal')
+var errors = require('./errors')
 var {
   isSymbol, isBasic, isDefined, isFunction, isArray, isLookup,
   isCore, isNumber, isFun: _isFun, isBoundFun, isSystemFun, stringify, parseFun
@@ -16,6 +17,7 @@ function createScope(fn, map, _scope) {
   var {name, args, body} = parseFun(fn)
   var scope = {__proto__: _scope || {}}
   if(isArray(map)) {
+    errors.assertArgs(fn, map)
     var ary = map; map = (_,i) => ary[i]
   }
   for(var i = 0; i < args.length; i++)
@@ -48,6 +50,10 @@ function isLoopifyable (fn) {
 }
 
 function scopify (expr) {
+  if(isArray(expr)) {
+    if(expr[0] === syms.scope) return expr
+    if(expr[0] === syms.block) return [syms.scope].concat(expr.slice(1))
+  }
   return (function R (expr) {
     return isArray(expr) && (syms.def === expr[0] ? true : expr.find(R))
   })(expr) ? [syms.scope, expr] : expr
@@ -61,8 +67,10 @@ function blockify (args, argv, result) {
 }
 
 function create_loop(args, argv, test, recurse, result) {
-  return scopify(blockify(args, argv,
+  var r = scopify(blockify(args, argv,
     [syms.loop, test, blockify(args, recurse), result]))
+
+  return r
 }
 
 var eqz = Symbol('eqz')
@@ -97,7 +105,17 @@ function loopify(fn, argv, scope) {
     return create_loop(args, argv, _inline([eqz, test]), recurse.slice(1).map(_inline), _inline(result))
 }
 
-function inline_expr (body, remap) {
+function wrap (fn) {
+  return function (body) {
+    if(body.inlined) {
+    }
+    var r = fn.apply(null, [].slice.call(arguments))
+    r.inlined = r.inlined || new Error('first inline')
+    return  r
+  }
+}
+
+var inline_expr = wrap(function (body, remap) {
   if(!isDefined(body))  throw new Error('cannot inline undefined!')
   var R = (body) => inline_expr(body, remap)
   if(isBasic(body)) return body
@@ -120,6 +138,7 @@ function inline_expr (body, remap) {
   }
   else if(body[0] === syms.def) {
     var k = body[1]
+    if(body.length == 2) return [syms.def, k]
     var v = R(body[2]) //didn't forget to recurse into value this time!
     return isBasic(v) ? (remap[k.description] = {value: v}).value
                       : [syms.def, k, v]
@@ -134,6 +153,9 @@ function inline_expr (body, remap) {
       return [syms.if, _test, R(body[2]), 0]
   }
   else {
+    if(body[0] === syms.scope) {
+      return body
+    }
     //function  (may be recursive!)
     if(body.length === 0) throw new Error('body cannot be empty list')
     var value = isFun(body[0]) ? body[0] : lookup(remap, body[0], false)
@@ -141,15 +163,15 @@ function inline_expr (body, remap) {
     //if it's a FUNCTION that's a built in function, not user     |
     //defined. we can only inline that if all arguments are known.|
     //note, we already attempted to inline the args just above ---`
-/*
+
 // HMM what was this fixing?
 // I added this, but now removing it makes the tests pass...
-    if(isFunction (value) &&
-      //XXX VERY UGLY HACK TO NOT INLINE SIDE EFFECTS
-     /^(?:get_|set_|i32_store|i32_load)/.test(body[0].description)) {
-      return [body[0]].concat(args)
-    }
-*/
+//    if(isFunction (value) &&
+//      //XXX VERY UGLY HACK TO NOT INLINE SIDE EFFECTS
+//     /^(?:get_|set_|i32_store|i32_load)/.test(body[0].description)) {
+//      return [body[0]].concat(args)
+//    }
+
     if(isFunction (value) && args.every(isBasic))
       return value.apply(null, args)
     //if a function is recursive, but called with known values
@@ -164,7 +186,7 @@ function inline_expr (body, remap) {
     else
       return [body[0]].concat(args)
   }
-}
+})
 
 //function wrap(expr) {
 //  return isBasic(expr) || isSymbol(expr) || 

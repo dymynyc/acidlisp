@@ -104,7 +104,7 @@ function unroll (fun, funs, key) {
       //keep track of local variables, but don't replace them
       //(maybe later?)
       scope[ast[1].description] = {value:null, hasValue: false}
-      R(ast[2])
+      if(ast.length == 3) R(ast[2])
       return
     }
 

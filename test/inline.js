@@ -1,6 +1,7 @@
 var tape = require('tape')
 var acid = require('../')
 var syms = require('../symbols')
+var scopify = require('../scopify')
 
 var {
   isRecursive, isInlineable, getUsedVars, inline, loopify,
@@ -84,8 +85,8 @@ var tests = [
   [test_if, '(1 b c)', scope, 'b'],
   [test_if, '(0 b c)', scope, 'c'],
   [recursive, '(y 3)', scope, '(add 1 (add 1 (add 1 y)))'],
-  [recursive, '(x M)', scope, '(scope (block (def x x) (def N M) (loop (eqz (lte N 0)) (block (def x (add 1 x)) (def N (sub N 1))) x)))'],
-  [vars, '(a b)', scope, '(scope (block (def z (add a b)) (mul z z)))'],
+  [recursive, '(x M)', scope, '(scope (def x x) (def N M) (loop (eqz (lte N 0)) (block (def x (add 1 x)) (def N (sub N 1))) x))'],
+  [vars, '(a b)', scope, '(scope (def z (add a b)) (mul z z))'],
   [vars, '(1 2)', scope, '9'],
 //  [loop, '(10)', scope, '55']
 ]
@@ -128,7 +129,7 @@ tape('loopify inlineable', function (t) {
   //x is mutated so must be a variable.
   t.equal(
     stringify(loopify(ast, acid.parse('(7 M)'), scope)),
-    '(scope (block (def x 7) (def N M) (loop (eqz (lte N 0)) (block (def x (add 1 x)) (def N (sub N 1))) x)))')
+    '(scope (def x 7) (def N M) (loop (eqz (lte N 0)) (block (def x (add 1 x)) (def N (sub N 1))) x))')
   t.end()
 })
 
@@ -223,5 +224,56 @@ tape('inline module', function (t) {
   )`)
   var _m = inline_module(m)
   t.equal(stringify(_m).indexOf('reduce'), -1)
+  t.end()
+})
+
+tape('inline calls', function (t) {
+  var m = acid.eval(`
+    (module
+      (def tens (fun R (b a)
+        (if (neq 0 b) (R (div b 10) (add 1 a)) a)
+      ))
+      (def create (fun (s)
+        (fun (a b) (if (eq s (add a (tens a b))) 1 0))
+      ))
+      (export (create 7))
+    )
+  `)
+  var _m = inline_module(m)
+  console.log(stringify(_m))
+  t.end()
+})
+
+tape('inline calls', function (t) {
+  var m = acid.eval(`
+    (module
+      (def test [fun RR (a) (if (gt a 1) (RR (div a 2)) a)])
+      (export (fun (a b) (block
+        ((fun R (b a)
+          (if (test b) (R (div b 10) (add 1 a)) a)
+        ) a b)
+      )
+    )))
+  `)
+  var _m = inline_module(m)
+  console.log(pretty(_m))
+  console.log(pretty(scopify(_m)))
+  t.end()
+})
+
+tape('inline calls', function (t) {
+  var m = acid.eval(`
+    (module
+      (def create (fun (a b c) (fun (x) (a (b (c x))) )))
+
+      (export (create
+        (fun (j) {add 1 j})
+        (fun (j) {mul j j})
+        (fun (j) {mul 2 j})
+      ))
+    )
+  `)
+  var _m = inline_module(m)
+  console.log(stringify(_m))
   t.end()
 })

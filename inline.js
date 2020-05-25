@@ -8,6 +8,9 @@ var {
   isCore, isNumber, isFun: _isFun, isBoundFun, isSystemFun, stringify, parseFun
 } = require('./util')
 
+//when loopifying, update the var names so that don't collide
+var hygene = 0
+
 function isFun(f) {
   return _isFun(f) || isBoundFun(f)
 }
@@ -55,16 +58,15 @@ function scopify (expr) {
     if(expr[0] === syms.block) return [syms.scope].concat(expr.slice(1))
   }
   return (function R (expr) {
-    return isArray(expr) && (syms.def === expr[0] ? true : expr.find(R))
+    return isArray(expr) && (syms.def === expr[0] || syms.batch === expr[0] ? true : expr.find(R))
   })(expr) ? [syms.scope, expr] : expr
 }
 
 
 function blockify (args, argv, result) {
-  var batch = [syms.batch, args, argv]
+  var batch = args.length === 1
+    ? [syms.def, args[0], argv[0]] : [syms.batch, args, argv]
   return result ? [syms.block, batch, result] : batch
-//  .concat(args.map((k, i) => [syms.def, k, argv[i]]))
-//    .concat(result ? [result] : [])
 }
 
 function create_loop(args, argv, test, recurse, result) {
@@ -77,7 +79,7 @@ function create_loop(args, argv, test, recurse, result) {
 var eqz = Symbol('eqz')
 
 function loopify(fn, argv, scope) {
-  var hygene = 1
+  hygene ++
   var {name, args, body} = parseFun(fn)
 
   var [_if, test, result, recurse] = body
@@ -97,13 +99,14 @@ function loopify(fn, argv, scope) {
 
   //else, make sure we don't override the parameters!
   //(doesn't work without this...)
-  scope = createScope(fn, args, scope)
+  var _args = args.map(s => Symbol(s.description+'__'+hygene))
+  scope = createScope(fn, _args, scope)
 
   //result and recurse might be the other way around, handle that.
   if(calls(result, name))
-    return create_loop(args, argv, _inline(test), result.slice(1).map(_inline), _inline(recurse))
+    return create_loop(_args, argv, _inline(test), result.slice(1).map(_inline), _inline(recurse))
   else
-    return create_loop(args, argv, _inline([eqz, test]), recurse.slice(1).map(_inline), _inline(result))
+    return create_loop(_args, argv, _inline([eqz, test]), recurse.slice(1).map(_inline), _inline(result))
 }
 
 function wrap (fn) {
@@ -197,13 +200,14 @@ var inline_expr = wrap(function (body, remap) {
 
 function inline (fn, argv, scope, hygene) {
   hygene = hygene || 0
-  var {body, scope: _scope} = parseFun(fn)
+  var {body, args, scope: _scope} = parseFun(fn)
   if(isLoopifyable(fn)) return loopify(fn, argv, scope)
-  return scopify(inline_expr(
-    body,
-    createScope(fn, argv, _scope || scope || {}),
-    fn, ++hygene
-  ))
+  return scopify(
+    inline_expr(
+      body,
+      createScope(fn, argv, _scope || scope || {}),
+      fn, ++hygene
+    ))
 }
 
 function inline_fun (fn) {
@@ -213,6 +217,7 @@ function inline_fun (fn) {
 }
 
 function inline_module(m) {
+  hygene = 0
   if(isFun(m)) return inline_fun(m)
   else         return m.map(([k, fn]) => [k, inline_fun(fn)])
 }

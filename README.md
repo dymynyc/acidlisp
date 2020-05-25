@@ -207,6 +207,30 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+## 24/5/2020
+
+Have been rewriting things again I wrote with macros using
+functions and recursion. It's coming out for more elegantly
+than it did with iteration. Implementing inlining was challenging.
+prehaps more challenging than macros? but using functions is easier
+and it's a clean abstraction. Inlining isn't perfect yet.
+I've been encountering a few problems where the scoping isn't quite
+right. Scope blocks worked well. A current problem is inlining
+recursive loops, when they are called using the same variable names.
+
+I am now considering `unscope` it would allow you to refer to a variable outside
+the current scope, so `(block (def a 1) (scope (def a 2) (unscope a)))` would evaluate to 1.
+
+Another approach would be a way to set variables as a batch, easy
+to implement in the interpreter: eval the args, then assign the symbols.
+The compiler on the other hand would need to check for cases where
+a var is used to set another var like `(batch_def [a b] [b a])`
+actually I need this to inline functions correctly... I guess that's
+the answer.
+
+
+
+
 ## 20/5/2020
 
 implemented scope blocks. does a recursive check first, doesn't

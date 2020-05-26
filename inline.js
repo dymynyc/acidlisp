@@ -101,7 +101,6 @@ function loopify(fn, argv, scope) {
   //(doesn't work without this...)
   var _args = args.map(s => Symbol(s.description+'__'+hygene))
   scope = createScope(fn, _args, scope)
-
   //result and recurse might be the other way around, handle that.
   if(calls(result, name))
     return create_loop(_args, argv, _inline(test), result.slice(1).map(_inline), _inline(recurse))
@@ -147,6 +146,9 @@ var inline_expr = wrap(function (body, remap) {
     return isBasic(v) ? (remap[k.description] = {value: v}).value
                       : [syms.def, k, v]
   }
+  else if(body[0] === syms.batch) {
+    return [syms.batch, body[1].map(R), body[2].map(R)]
+  }
   else if (body[0] === syms.if) {
     var _test = R(body[1])
     if(isBasic(_test))
@@ -157,9 +159,6 @@ var inline_expr = wrap(function (body, remap) {
       return [syms.if, _test, R(body[2]), 0]
   }
   else {
-    if(body[0] === syms.scope) {
-      return body
-    }
     //function  (may be recursive!)
     if(body.length === 0) throw new Error('body cannot be empty list')
     var value = isFun(body[0]) ? body[0] : lookup(remap, body[0], false)

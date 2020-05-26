@@ -286,3 +286,22 @@ tape('inline calls', function (t) {
 
   t.end()
 })
+
+tape('problem', function (t) {
+  var  m = acid.eval(`
+  (module
+    (def range (fun (max reduce)
+      ((fun R (acc i)
+        (if (lt i m) (R (reduce acc i) (add 1 i)) acc) ) 0 0)
+    ))
+    (def map (fun (_acc _i)
+      (def x (add _i (mul 33 _acc)))
+    ))
+    (export map (fun (n)
+      (range n (fun (acc i) (map acc i)))
+    ))
+  )`)
+  var _m = inline_module(m)
+  console.log(pretty(_m))
+  t.end()
+})

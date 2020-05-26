@@ -5,6 +5,10 @@ function prefix (sym) {
   return /^[^_$0-9]+/.exec(ast.description)[0]
 }
 
+function startAt(ast) {
+  return isArray(ast[0]) ? 0 : 1
+}
+
 function tidy (ast) {
   var vars = {}, prefixes = {}
   function prefix (ast) {
@@ -18,14 +22,14 @@ function tidy (ast) {
     else if(isArray(ast))
       //when we are ready to output wat, vars cannot be functions
       //so start iterating at 1.
-      for(var i = 1; i < ast.length;i ++) R(ast[i])
+      for(var i = startAt(ast); i < ast.length;i ++) R(ast[i])
   })(ast)
 
   ;(function R (ast) {
     if(isSymbol(ast) && vars[ast.description]) // && /^[a-zA-Z_]+(?:(?:$|__)\d+)+$/.test(ast.description))
       return vars[ast.description] || ast
     else if(isArray(ast))
-      for(var i = 1; i < ast.length;i ++) ast[i] = R(ast[i])
+      for(var i = startAt(ast); i < ast.length;i ++) ast[i] = R(ast[i])
     return ast
   })(ast)
 
@@ -88,8 +92,8 @@ function scopify (ast, scope, current, hygene) {
         if(scope[ast[2].description])
           ast[2] = scope[ast[2].description]
       }
-        else
-          hygene = scopify(ast[2], scope, current, hygene)
+      else
+        hygene = scopify(ast[2], scope, current, hygene)
       ast[1] = scope[k] = Symbol(current === 0 ? k : k+'__'+current)
       return hygene
     }

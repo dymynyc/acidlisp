@@ -16,7 +16,7 @@ but generate static functions that are fast and can be compiled to web assembly.
 
 you'll need to install the `wabt` tools.
 ```
-git clone https://github.com/dominictarr/acidlisp
+git clone https://github.com/dymynyc/acidlisp
 cd acidlisp
 ./load.js path_to_al_file > out.wat
 wat2wasm out.wat #wat2wasm from wabt (web assembly binary tools)

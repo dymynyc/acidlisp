@@ -207,6 +207,22 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+## 5/6/2020
+
+I've been rewriting all the modules with inlining.
+I've discovered that I don't really understand my inlining
+algorithm. I'm gonna rewrite it, with a different focus.
+Start by handling the higher order functions, rather than
+inlining literals (come back to that). I think scope was the wrong
+idea. It didn't work for when a deep closure references an outer scope.
+This time I'm gonna use `batch` when inlining a function (rather
+than doing substitutions) but the first step is renaming all vars
+so that everything is unique. Then inlining will be easy, won't have
+to think about remapping things...
+
+use batch to inline a function call. This will make a bunch of extra
+variables, but then remove extras in a subsequent pass.
+
 ## 24/5/2020
 
 Have been rewriting things again I wrote with macros using

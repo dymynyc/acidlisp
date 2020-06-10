@@ -199,13 +199,16 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 * get_global set_global functions.
   instead have references like functions and strings? that are private to modules.
-* $literals$ string needs something to prevent collisions from modules.
-* hygenic macros btw
 * non-joke memory management
-* cli args (output different formats)
 * type inference?
 
 ## dev diary
+
+## 7/6/2020
+
+hmm, for the case where the same function is inlined twice in
+the same caller, unique vars will get duplicated, so still
+need `scope` for that.
 
 ## 5/6/2020
 

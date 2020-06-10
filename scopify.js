@@ -9,6 +9,8 @@ function startAt(ast) {
   return isArray(ast[0]) ? 0 : 1
 }
 
+//convert k_i vars, where i is unique for all vars,
+//to form k{_j}? where k:j is unique and it's just k if j=0
 function tidy (ast) {
   var vars = {}, prefixes = {}
   function prefix (ast) {

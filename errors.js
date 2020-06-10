@@ -18,7 +18,7 @@ var many = [0, Infinity]
 var more = [1, Infinity]
 var lengths = {
   loop    : [2, 3],
-  if      : [2,3],
+  if      : [2, 3],
   def     : 2,
   block   : many,
   and     : more,
@@ -39,12 +39,12 @@ exports.checkArity = function (ast) {
   if(!length) return
   var a_length = ast.length-1
   var pos =  toPosition(ast[0], ast.meta)
-
-  if(isNumber(length))
+  if(isNumber(length)) {
     if(length !== a_length) throw new Error(
       'incorrect number of arguments for:' + name +
       ', expected:'+length+', got:' + a_length + '\n' + pos
     )
+  }
   else if(length[0] > a_length)
     throw new Error(
       'incorrect number of arguments for:' + name +
@@ -56,7 +56,6 @@ exports.checkArity = function (ast) {
       'incorrect number of arguments for:' + name +
       ', expected at most:'+length[1]+', got:' + a_length + '\n' + pos
     )
-
 }
 
 

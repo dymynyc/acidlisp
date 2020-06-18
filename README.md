@@ -21,6 +21,45 @@ cd acidlisp
 ./load.js path_to_al_file > out.wat
 wat2wasm out.wat #wat2wasm from wabt (web assembly binary tools)
 ```
+## Compiler Passes
+
+### parse
+
+takes the raw source and parses to ast.
+
+### uniquify
+
+convert variables so that no names are used twice.
+this makes later passes easier.
+
+### eval
+
+eval runs next. this means imports are called,
+any top level code, which may include generating functions.
+output of this pass is the exports to be written to wat,
+and the scope.
+
+### unroll
+
+takes exports and scope object, and outputs a flat scope.
+for example, a module may export functions that refer to other
+functions internal to that module.
+
+### inline
+
+convert recursive functions into loops (if possible)
+and take function calls and copy the called code into the calling code.
+output will include `scope` and `batch` calls, that are not used normally.
+
+inlining makes the code faster, but larger. (in theory)
+(am currently rewriting this)
+
+if inline is used, unroll is not needed.
+  
+### scopify
+
+converts scope and batch calls to ordinary defs and blocks
+and normalizes all numbered variables.
 
 ## modules
 

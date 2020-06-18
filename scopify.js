@@ -1,4 +1,7 @@
-var {isArray, isSymbol} = require('./util')
+var {
+  isArray, isSymbol, isBoundFun, isFun,
+  stringify, parseFun
+} = require('./util')
 var syms = require('./symbols')
 
 function prefix (sym) {
@@ -30,8 +33,14 @@ function tidy (ast) {
   ;(function R (ast) {
     if(isSymbol(ast) && vars[ast.description]) // && /^[a-zA-Z_]+(?:(?:$|__)\d+)+$/.test(ast.description))
       return vars[ast.description] || ast
+    if(isBoundFun(ast) || isFun(ast)) {
+      var {name, args, body} = parseFun(ast)
+      for(var i = 0; i < args.length; i++) args[i] = R(args[i])
+      R(body)
+    }
     else if(isArray(ast))
       for(var i = startAt(ast); i < ast.length;i ++) ast[i] = R(ast[i])
+
     return ast
   })(ast)
 
@@ -80,14 +89,31 @@ function scopify (ast, scope, current, hygene) {
   current = current || 0
   hygene = hygene || 0
 
+  function $ (sym) {
+    var k = sym.description
+    return Symbol(current === 0 ? k : k+'__'+current)
+  }
+
   var start = 0
   if(isArray(ast)) {
+    if(isBoundFun(ast)) {
+      //hmm, is this scope correct????
+      var _scope = {__proto__: scope}
+      var {name, args, body} = parseFun(ast)
+      for(var i = 0; i < args.length; i++) {
+        args[i] = _scope[args[i].description] = $(args[i])
+      }
+      if(name) {
+        ast[1] = _scope[name.description] = $(name)
+      }
+      return hygene = scopify(body, _scope, current, hygene)
+    }
+
     if(ast[0] === syms.batch) {
       return scopify(batch(ast), scope, current, hygene)
     }
 
     if(ast[0] === syms.def) {
-      var k = ast[1].description
       //traverse the value first, because the key doesn't get set
       //until the expression is evaluated.
       if(isSymbol(ast[2])) {
@@ -96,7 +122,7 @@ function scopify (ast, scope, current, hygene) {
       }
       else
         hygene = scopify(ast[2], scope, current, hygene)
-      ast[1] = scope[k] = Symbol(current === 0 ? k : k+'__'+current)
+      ast[1] = scope[ast[1].description] = $(ast[1])
       return hygene
     }
     else if(ast[0] === syms.scope) {
@@ -107,6 +133,7 @@ function scopify (ast, scope, current, hygene) {
       ast[0] = syms.block
       current = ++hygene
     }
+
 
     for(var i = start; i < ast.length; i++) {
       if(isArray(ast[i]))

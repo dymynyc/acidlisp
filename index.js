@@ -7,6 +7,7 @@ var wat2wasm   = require('./wat2wasm')
 var js         = require('./compile/js')
 var hydrate    = require('./hydrate')
 var scopify    = require('./scopify')
+var uniquify   = require('./uniquify')
 var createEnv  = require('./env')
 var {
   isString, isArray, stringify, pretty, isFun, isBoundFun, isSymbol
@@ -28,7 +29,7 @@ function envify(ary) {
 
 function evalIf(src, env, filename) {
   env = envify(env || createEnv())
-  return isString(src) ? ev(hydrate(parse(src, filename), env), env) : src
+  return isString(src) ? ev(uniquify(hydrate(parse(src, filename), env)), env) : src
 }
 
 //always eval.
@@ -42,7 +43,13 @@ exports.js_eval = function (src, env, filename) {
 }
 
 exports.js = function (src, env, filename) {
-  return js(unroll(evalIf(src, env, filename)))
+  var ast = evalIf(src, env, filename)
+  return js(unroll(ast))
+}
+
+exports.scope = function (src, env, filename) {
+  env = env || createEnv()
+  return scopify(evalIf(src, env, filename))
 }
 
 exports.wat = function (src, env, filename) {

@@ -26,7 +26,15 @@ var inputs = [
   )`,
   //x is defined, so gets mapped
   // but y is in global scope so leave it.
-  '[(fun (x) {block (def y x) (add y 10)}) 20]'
+  '[(fun (x) {block (def y x) (add y 10)}) 20]',
+
+  //
+  `(block
+    (def x 1)
+    (def x (add x 1))
+    x
+  )`,
+
 ]
 
 inputs.forEach(v => {

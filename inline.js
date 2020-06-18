@@ -110,8 +110,6 @@ function loopify(fn, argv, scope) {
 
 function wrap (fn) {
   return function (body) {
-    if(body.inlined) {
-    }
     var r = fn.apply(null, [].slice.call(arguments))
     r.inlined = r.inlined || new Error('first inline')
     return  r
@@ -120,7 +118,10 @@ function wrap (fn) {
 
 var inline_expr = wrap(function (body, remap) {
   if(!isDefined(body))  throw new Error('cannot inline undefined!')
-  var R = (body) => inline_expr(body, remap)
+  errors.checkArity(body)
+  var R = (body) => {
+    return inline_expr(body, remap)
+  }
   if(isBasic(body)) return body
   else if(isSymbol(body)) {
     var r = lookup(remap, body, false, true)
@@ -151,6 +152,9 @@ var inline_expr = wrap(function (body, remap) {
   }
   else if (body[0] === syms.if) {
     var _test = R(body[1])
+    if(body.length < 3 || body.length > 4) {
+      errors.checkArity(body)
+    }
     if(isBasic(_test))
       return R(body[(0 !== _test) ? 2 : 3])
     else if(body.length === 4)
@@ -169,11 +173,11 @@ var inline_expr = wrap(function (body, remap) {
 
 // HMM what was this fixing?
 // I added this, but now removing it makes the tests pass...
-//    if(isFunction (value) &&
-//      //XXX VERY UGLY HACK TO NOT INLINE SIDE EFFECTS
-//     /^(?:get_|set_|i32_store|i32_load)/.test(body[0].description)) {
-//      return [body[0]].concat(args)
-//    }
+    if(isFunction (value) &&
+      //XXX VERY UGLY HACK TO NOT INLINE SIDE EFFECTS
+     /^(?:get_|set_|i32_store|i32_load)/.test(body[0].description)) {
+      return [body[0]].concat(args)
+    }
 
     if(isFunction (value) && args.every(isBasic))
       return value.apply(null, args)
@@ -190,12 +194,6 @@ var inline_expr = wrap(function (body, remap) {
       return [body[0]].concat(args)
   }
 })
-
-//function wrap(expr) {
-//  return isBasic(expr) || isSymbol(expr) || 
-//    (isArray(expr) && expr[0] === syms.scope)
-//  ? expr : [syms.scope, expr]
-//}
 
 function inline (fn, argv, scope, hygene) {
   hygene = hygene || 0

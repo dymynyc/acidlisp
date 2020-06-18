@@ -54,6 +54,9 @@ if(!module.parent) {
     else
       console.log(acid.watStack(load(file), env))
   }
+  else if(cmd === 'scope') {
+    console.log(pretty(acid.scope(load(file))))
+  }
   else if(cmd === 'run') {
     var m = Wasm(fs.readFileSync(file))
     var fn_name = argv[0]

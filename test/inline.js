@@ -305,3 +305,24 @@ tape('problem', function (t) {
   console.log(pretty(_m))
   t.end()
 })
+
+tape('problem 2', function (t) {
+  var  m = acid.eval(`
+  (module
+    (def range (fun (start end initial reduce)
+      ((fun R (acc i)
+        (if (lt i end) (R (reduce acc i) (add 1 i)) acc)
+      ) initial start)
+    ))
+
+    (export (fun (i len)
+      (range 0 len 0 (fun (acc j) (block
+        (neq i j)
+      )))
+    ) )
+  )`)
+  var _m = inline_module(m)
+  //(neq i j) should get two unique symbols
+  console.log(pretty(_m))
+  t.end()
+})

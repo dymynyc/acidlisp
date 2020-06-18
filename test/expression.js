@@ -4,6 +4,7 @@ var {
 } = require('../util')
 var parse = require('../parse')
 var ev = require('../eval')
+var uniquify = require('../uniquify')
 var syms = require('../symbols')
 var compileWat = require('../compile/wat')
 var wat2wasm = require('../wat2wasm')
@@ -30,7 +31,9 @@ var inputs = [
   '((fun R (i) (if (lt i 100) (R (add i i)) i)) 1)',
   '((fun R (i) (if (lt i 50) (R (mul i 2)) i)) 1)',
   '(if (if (sub (lt a 4) b) 10 0) 10 -10)',
-  '(if [block {def x b} (if (sub (lt x 4) b) 10 0) ] 10 -10)'
+  '(if [block {def x b} (if (sub (lt x 4) b) 10 0) ] 10 -10)',
+  '[(fun (x) {block (def y x) (add y 10)}) 20]',
+
 ]
 
 var expected = [
@@ -43,7 +46,8 @@ var expected = [
   128,
   64,
   -10,
-  10
+  10,
+  30
 ]
 
 var keys = Object.keys(env).filter(e => isNumber(env[e].value))
@@ -71,11 +75,11 @@ inputs.forEach(function (_, i) {
   tape(inputs[i] + ' => ' + expected[i], function (t) {
     var ast = parse(inputs[i])
     t.ok(ast, 'can parse')
+    ast = uniquify(ast)
     t.equal(ev(ast, env), expected[i])
     t.end()
   })
 })
-
 
 inputs.forEach(function (_, i) {
   tape('js:'+inputs[i] + ' => ' + expected[i], function (t) {
@@ -86,6 +90,8 @@ inputs.forEach(function (_, i) {
 
 inputs.forEach(function (_, i) {
   tape('wat:'+inputs[i] + ' => ' + expected[i], function (t) {
+    var a = toModule(inputs[i])
+    console.log(a)
     t.equal(acid.wasm(toModule(inputs[i])).apply(null, values), expected[i])
     t.end()
   })

@@ -30,7 +30,8 @@ takes the raw source and parses to ast.
 ### uniquify
 
 convert variables so that no names are used twice.
-this makes later passes easier.
+this makes later passes easier. unique variable names
+should not change any behavior, it should behave and type exacty the same.
 
 ### eval
 
@@ -243,6 +244,50 @@ this won't work for recursion though, unless there is a way to convert recursion
 
 ## dev diary
 
+### 24/6/2020
+
+have been thinking about how to inline functions returned
+from other functions. when I started this project, I only
+had function constructors running in the eval stage,
+then I inlined any scoped values. But now I'm thinking
+about how to call a constructor at the start another function.
+Unlike at eval time, there may not be enough values known to
+bind all variables. Ruminating on it, I eventually realized
+that every function constructor has a setup, and then a return,
+(the return is a function) the setup should be inlined where
+the constructor is called, but the return(ed function) is inlined
+where ever it is called. Firstly, this will be outside
+of the `scope` block. scope block is the wrong idea, should just
+uniquify (again) when inlining, the returned fun needs to be able to
+see the setup vars. Secondly, assigning functions to variables,
+or returning functions sets the function in the scope but drops
+the function from the code, the function is used where it is inlined.
+
+I think because the very top level only takes numbers, we should
+be able to statically compile all functions.
+
+
+### 18/6/2020
+
+okay took quite a break, couldn't really focus on computers
+because the world is falling apart. that's still happening
+but am used to it now. got uniquify working with scopify.
+these basically do the same things now. Could I just have
+one function for traversing variable names and reuse it?
+scopify in particular is a bit ugly.
+
+hmm, the tricky bit is how it's handled when two defs update
+the same variable. uniquify creates two vars,
+but `(def x 1) (def x (add 1 x))` becomes `(def x1 1) (def x2 (add 1 x1))`
+so it's the same behavior.
+
+loops are the other case, but users don't write loops directly,
+they are made from inlined recursive functions.
+
+maybe I can ditch scopify (except for handling `batch`)?
+
+
+
 ## 7/6/2020
 
 hmm, for the case where the same function is inlined twice in
@@ -373,7 +418,6 @@ to operate on types so `x + y = z` becomes `int + int = int`
 I am now wondering if I can use a approach like this to do thing
 like ensure that function X is always called before Y, or
 that something eventually happens.
-
 
 ### 2/5/2020
 

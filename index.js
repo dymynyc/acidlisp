@@ -9,11 +9,12 @@ var hydrate    = require('./hydrate')
 var scopify    = require('./scopify')
 var uniquify   = require('./uniquify')
 var createEnv  = require('./env')
+var inline = require('./inline').inline_module
+var inline2 = require('./inline2').inline_module
 var {
   isString, isArray, stringify, pretty, isFun, isBoundFun, isSymbol
 } = require('./util')
 
-var inline = require('./inline').inline_module
 
 exports.bind = function (ast, env) {
   return ev.bind(ast, envify(env))
@@ -52,15 +53,21 @@ exports.scope = function (src, env, filename) {
   return scopify(evalIf(src, env, filename))
 }
 
+var preWat = exports.preWat = function (src, env, filename) {
+  env = env || createEnv()
+  var in_r = inline2(evalIf(src, env, filename), env)
+  console.log('inline2', pretty(in_r))
+  var r = scopify(in_r)
+  return unroll(r)
+}
+
 exports.wat = function (src, env, filename) {
   env = env || createEnv()
-  var r = scopify(inline(evalIf(src, env, filename)))
-  return Wat(unroll(r), env)
+  return Wat(preWat(src, env, filename), env)
 }
 exports.watStack = function (src, env, filename) {
   env = env || createEnv()
-  var r = scopify(inline(evalIf(src, env, filename)))
-  return WatStack(unroll(r), env)
+  return WatStack(preWat(src, env, filename), env)
 }
 
 exports.wasm = function (src, env, filename, imports) {

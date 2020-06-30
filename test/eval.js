@@ -1,9 +1,9 @@
 var tape = require('tape')
 var parse = require('../parse')
 var ev = require('../eval')
-var unroll = require('../unroll')
-var compileWat = require('../compile/wat')
-var compileJs = require('../compile/js')
+//var unroll = require('../unroll')
+//var compileWat = require('../compile/wat')
+//var compileJs = require('../compile/js')
 var wat2wasm = require('../wat2wasm')
 var stringify = require('../util').stringify
 var syms = require('../symbols')
@@ -53,16 +53,17 @@ inputs.forEach(function (_, i) {
   })
 })
 
-//inputs.forEach(function (_, i) {
-//  tape('js:'+inputs[i] + ' => ' + outputs[i], function (t) {
-//    t.equal(acid.js_eval(toModule(inputs[i]))(), outputs[i])
-//    t.end()
-//  })
-//})
-//
+inputs.forEach(function (_, i) {
+  tape('js:'+inputs[i] + ' => ' + outputs[i], function (t) {
+    t.equal(acid.js_eval(toModule(inputs[i]))(), outputs[i])
+    t.end()
+  })
+})
+
 inputs.forEach(function (_, i) {
   tape('wat:'+inputs[i] + ' => ' + outputs[i], function (t) {
-    console.log(acid.wat(toModule(inputs[i])))
+    console.log(toModule(inputs[i]))
+    console.log('WAT', acid.wat(toModule(inputs[i])))
     t.equal(acid.wasm(toModule(inputs[i]))(), outputs[i])
     t.end()
   })
